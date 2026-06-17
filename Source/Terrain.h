@@ -19,10 +19,11 @@
 #define _TERRAIN_H_
 
 #include "Unit.h"
-#include "PlanitiaPrimitives.h"
-#include "PlanitiaD3DDevice.h"
+#include "PlanitiaMeshCache.h"
+#include "PlanitiaTypes.h"
 
 #include <string>
+#include <vector>
 
 enum TerrainTypes
 {
@@ -49,6 +50,13 @@ struct TerrainCell
 	DWORD m_AdditionalData;
 };
 
+struct TerrainDrawMesh
+{
+	Model model{};
+	bool loaded = false;
+	int triangleCount = 0;
+};
+
 class Background : public Unit
 {
 public:
@@ -61,9 +69,9 @@ public:
    virtual void Draw();
 
 private:
-   Bitmap* m_Background;
-   PlanitiaMesh* m_Mesh;
-
+   Texture* m_Background = nullptr;
+   Model m_Model{};
+   bool m_ModelLoaded = false;
 };
 
 class Terrain : public Unit
@@ -93,7 +101,6 @@ public:
 	void CreateIndexBuffers();
 	void CreateWaterVertexBuffer();
 	void CreateHighlightVertexBuffer();
-	void CreateWaterIndexBuffer();
 
 	void DrawTerrain();
 	void DrawWater();
@@ -107,8 +114,6 @@ public:
 	virtual float GetMiddle(int x, int y);
 
 	virtual bool IsValidVillageTerrain(int x, int y);
-
-	
 
 	virtual float GetHeight(float x, float y);  //  Uses LERP
 
@@ -126,9 +131,6 @@ public:
 	void PushDown(int x, int y, int numberofpushes);
 
 	DWORD ComputeLighting(int x, int y);
-//	DWORD ComputeLightingSand(int x, int y);
-//	DWORD ComputeLightingShallowWater(int x, int y);
-//	DWORD ComputeLightingRuinedLand(int x, int y);
 	int GetLightingComponent(int x, int y);
 	int GetAlphaComponent(int x, int y);
 	int GetMiddleAlphaComponent(int x, int y);
@@ -142,10 +144,6 @@ public:
 
 	void RuinAllLand();
 
-
-
-	//friend dReal HeightfieldCallback( void* pUserData, int x, int z );
-
 	int m_VertexWidth; //  The number of actual vertices wide the terrain is.
 	int m_VertexHeight; //  The number of actual vertices tall the terrain is.
 
@@ -155,38 +153,34 @@ public:
 	float* m_Values;
 	TerrainCell* m_TerrainTypes;
 
-//	Bitmap* m_Texture;
+	Texture* m_ShallowWaterTexture;
+	Texture* m_DeepWaterTexture;
+	Texture* m_SandTexture;
+	Texture* m_GrassTexture;
+	Texture* m_RuinTexture;
+	Texture* m_BlessTexture;
+	Texture* m_LavaTexture;
+	Texture* m_FarmTexture;
+	Texture* m_BlessedFarmTexture;
+	Texture* m_HouseTexture;
+	Texture* m_SwampTexture;
 
-	Bitmap* m_ShallowWaterTexture;
-	Bitmap* m_DeepWaterTexture;
-	Bitmap* m_SandTexture;
-	Bitmap* m_GrassTexture;
-	Bitmap* m_RuinTexture;
-	Bitmap* m_BlessTexture;
-	Bitmap* m_LavaTexture;
-	Bitmap* m_FarmTexture;
-	Bitmap* m_BlessedFarmTexture;
-	Bitmap* m_HouseTexture;
-	Bitmap* m_SwampTexture;
+	Texture* m_MaskTexture;
 
-	Bitmap* m_MaskTexture;
+	Texture2D* m_MiniMapTexture;
 
-	Bitmap* m_MiniMapTexture;
+	Texture* m_TerrainHighlightRing;
 
-	Bitmap* m_TerrainHighlightRing;
-
-	PlanitiaVertexBuffer* m_VertexBuffer = nullptr;
+	std::vector<Vertex> m_Vertices;
 	int m_VertexBufferSize = 0;
-	PlanitiaIndexBuffer* m_IndexBuffer[NUMBER_OF_VERTEX_BUFFERS] = {};
+	TerrainDrawMesh m_TypeMeshes[NUMBER_OF_VERTEX_BUFFERS];
 	int m_IndexBufferSizes[NUMBER_OF_VERTEX_BUFFERS] = {};
 
-	PlanitiaVertexBuffer* m_WaterVertexBuffer = nullptr;
-	int m_WaterVertexBufferSize = 0;
-	PlanitiaIndexBuffer* m_WaterIndexBuffer = nullptr;
-	int m_WaterIndexBufferSize = 0;
+	std::vector<Vertex> m_WaterVertices;
+	TerrainDrawMesh m_WaterMesh;
 
-	PlanitiaVertexBuffer* m_HighlightVertexBuffer = nullptr;
-	PlanitiaVertexBuffer* m_ColoredHighlightVertexBuffer[4] = {};
+	TerrainDrawMesh m_HighlightMesh;
+	TerrainDrawMesh m_ColoredHighlightMeshes[4];
 
 	bool m_DoWeNeedToRecreateVertexBuffers;
 	bool m_DoWeNeedToRecreateIndexBuffers;
@@ -200,11 +194,15 @@ public:
 
 	int m_TerrainViewRange;
 
-
 	bool m_ShowTerrainHit;
 	DWORD m_TerrainHitColor;
 
 	int m_NumberOfTrisDrawnThisFrame;
+
+private:
+	void RebuildTypeMesh(int type, const std::vector<unsigned short>& indices);
+	void RebuildMeshFromVertices(TerrainDrawMesh& drawMesh, const std::vector<Vertex>& vertices);
+	void UnloadDrawMesh(TerrainDrawMesh& drawMesh);
 };
 
 #endif

@@ -1,8 +1,8 @@
 #include "PlanitiaFramework.h"
 #include "PlanitiaGlobals.h"
 #include "PlanitiaEngineAdapter.h"
-#include "PlanitiaResourceManager.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaMeshCache.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaInput.h"
 #include "PlanitiaFonts.h"
 
@@ -12,10 +12,8 @@ void PlanitiaFramework::Init(const std::string& configfile)
 {
     gp_Engine = new PlanitiaEngineAdapter();
     gp_Engine->Init(configfile);
-    gp_ResourceManager = new PlanitiaResourceManager();
-    gp_ResourceManager->Init(configfile);
-    gp_Display = new Display();
-    gp_Display->Init(configfile);
+    gp_Scene = new PlanitiaScene();
+    gp_Scene->Init(configfile);
     gp_Input = new PlanitiaInput();
     gp_Input->Init(configfile);
     InitPlanitiaFonts();
@@ -26,8 +24,8 @@ void PlanitiaFramework::Shutdown()
 {
     ShutdownPlanitiaFonts();
     delete gp_Input; gp_Input = nullptr;
-    delete gp_Display; gp_Display = nullptr;
-    delete gp_ResourceManager; gp_ResourceManager = nullptr;
+    ShutdownPlanitiaMeshes();
+    delete gp_Scene; gp_Scene = nullptr;
     delete gp_Engine; gp_Engine = nullptr;
     s_Active = false;
 }
@@ -37,13 +35,13 @@ void PlanitiaFramework::Update()
     if (!s_Active) return;
     gp_Engine->Update();
     gp_Input->Update();
-    gp_Display->Update();
+    gp_Scene->Update();
 }
 
 void PlanitiaFramework::DrawPost()
 {
-    if (!s_Active || !gp_Display) return;
-    gp_Display->Draw();
+    if (!s_Active || !gp_Scene) return;
+    gp_Scene->FlushSprites();
 }
 
 bool PlanitiaFramework::IsActive()

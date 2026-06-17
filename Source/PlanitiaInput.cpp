@@ -1,7 +1,7 @@
 #include "PlanitiaInput.h"
 #include "Geist/Engine.h"
 #include "Geist/Globals.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaGlobals.h"
 
 void PlanitiaInput::Init(const std::string&) {}
@@ -21,6 +21,6 @@ void PlanitiaInput::Update()
     const float renderY = GetMouseY() * windowToRenderY;
 
     // GUI layout data uses design resolution coordinates.
-    m_MouseX = renderX / gp_Display->UIScaleX();
-    m_MouseY = renderY / gp_Display->UIScaleY();
+    m_MouseX = renderX / gp_Scene->UIScaleX();
+    m_MouseY = renderY / gp_Scene->UIScaleY();
 }

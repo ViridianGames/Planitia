@@ -2,14 +2,13 @@
 #define PLANITIA_D3D_DEVICE_H
 
 #include "PlanitiaTypes.h"
+#include "Geist/Primitives.h"
 #include <vector>
-
-struct PlanitiaVertex;
 
 class PlanitiaVertexBuffer
 {
 public:
-    std::vector<PlanitiaVertex> vertices;
+    std::vector<Vertex> vertices;
     bool Lock(UINT offset, UINT size, void** data, DWORD flags);
     void Unlock();
 };

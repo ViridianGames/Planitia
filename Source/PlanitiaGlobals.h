@@ -7,8 +7,7 @@
 #include <string>
 #include <vector>
 
-class Display;
-class PlanitiaResourceManager;
+class PlanitiaScene;
 class PlanitiaInput;
 class PlanitiaEngineAdapter;
 class Terrain;
@@ -40,8 +39,7 @@ struct PlanitiaPlayer
 };
 
 extern PlanitiaEngineAdapter* gp_Engine;
-extern PlanitiaResourceManager* gp_ResourceManager;
-extern Display* gp_Display;
+extern PlanitiaScene* gp_Scene;
 extern PlanitiaInput* gp_Input;
 
 extern Terrain* g_Terrain;

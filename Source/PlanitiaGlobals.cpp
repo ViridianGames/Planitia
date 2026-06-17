@@ -1,8 +1,7 @@
 #include "PlanitiaGlobals.h"
 
 PlanitiaEngineAdapter* gp_Engine = nullptr;
-PlanitiaResourceManager* gp_ResourceManager = nullptr;
-Display* gp_Display = nullptr;
+PlanitiaScene* gp_Scene = nullptr;
 PlanitiaInput* gp_Input = nullptr;
 
 Terrain* g_Terrain = nullptr;

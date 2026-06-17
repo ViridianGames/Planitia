@@ -2,8 +2,8 @@
 #define PLANITIA_MAIN_MENU_STATE_H
 
 #include "Geist/State.h"
-#include "PlanitiaGui.h"
-#include "PlanitiaPrimitives.h"
+#include "Geist/Gui.h"
+
 
 class MainMenuState : public State
 {
@@ -18,8 +18,8 @@ public:
     void OnEnter() override;
     void OnExit() override;
 
-    PlanitiaGui m_FrontEnd;
-    Bitmap* m_Cursor = nullptr;
+    Gui m_FrontEnd;
+    Texture* m_Cursor = nullptr;
 
 private:
     void DoInput();

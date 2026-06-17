@@ -175,15 +175,14 @@ set(SOURCES
         Source/MainState.cpp
         Source/PlanitiaConfig.cpp
         Source/PlanitiaD3DDevice.cpp
-        Source/PlanitiaDisplay.cpp
+        Source/PlanitiaScene.cpp
         Source/PlanitiaEngineAdapter.cpp
         Source/PlanitiaFonts.cpp
         Source/PlanitiaFramework.cpp
         Source/PlanitiaGlobals.cpp
-        Source/PlanitiaGui.cpp
         Source/PlanitiaInput.cpp
-        Source/PlanitiaPrimitives.cpp
-        Source/PlanitiaResourceManager.cpp
+
+        Source/PlanitiaMeshCache.cpp
         Source/StubState.cpp
         Source/Terrain.cpp
         Source/Unit.cpp

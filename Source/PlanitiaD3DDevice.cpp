@@ -1,6 +1,5 @@
 #include "PlanitiaD3DDevice.h"
-#include "PlanitiaPrimitives.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaGlobals.h"
 #include "Geist/Engine.h"
 #include "Geist/Globals.h"
@@ -27,7 +26,7 @@ void PlanitiaIndexBuffer::Unlock() {}
 bool PlanitiaD3DDevice::CreateVertexBuffer(UINT length, DWORD, DWORD, DWORD, PlanitiaVertexBuffer** out, void*)
 {
     *out = new PlanitiaVertexBuffer();
-    (*out)->vertices.resize(length / sizeof(PlanitiaVertex));
+    (*out)->vertices.resize(length / sizeof(Vertex));
     return true;
 }
 
@@ -115,10 +114,7 @@ void PlanitiaD3DDevice::GetTransform(DWORD state, D3DXMATRIX* matrix)
     }
 }
 
-void PlanitiaD3DDevice::Clear(DWORD, void*, DWORD, DWORD, float, DWORD)
-{
-    // Cleared by Geist render target
-}
+void PlanitiaD3DDevice::Clear(DWORD, void*, DWORD, DWORD, float, DWORD) {}
 
 bool PlanitiaD3DDevice::BeginScene()
 {
@@ -127,10 +123,20 @@ bool PlanitiaD3DDevice::BeginScene()
 
 void PlanitiaD3DDevice::EndScene() {}
 
-static void ApplyTexCoords(const PlanitiaD3DDevice* dev, const PlanitiaVertex& v, float& u, float& vOut)
+static Color VertexToColor(const Vertex& v)
 {
-    u = v._u;
-    vOut = v._v;
+    return Color{
+        static_cast<unsigned char>(v.r),
+        static_cast<unsigned char>(v.g),
+        static_cast<unsigned char>(v.b),
+        static_cast<unsigned char>(v.a)
+    };
+}
+
+static void ApplyTexCoords(const PlanitiaD3DDevice* dev, const Vertex& v, float& u, float& vOut)
+{
+    u = v.u;
+    vOut = v.v;
     if (dev->m_TextureTransformFlags != D3DTTFF_DISABLE)
     {
         const float tu = u * dev->m_Texture0._11 + vOut * dev->m_Texture0._21 + dev->m_Texture0._31;
@@ -140,9 +146,9 @@ static void ApplyTexCoords(const PlanitiaD3DDevice* dev, const PlanitiaVertex& v
     }
 }
 
-static Color ResolveVertexColor(PlanitiaD3DDevice* dev, const PlanitiaVertex& v)
+static Color ResolveVertexColor(PlanitiaD3DDevice* dev, const Vertex& v)
 {
-    Color vert = D3DColorToRaylib(v._color);
+    Color vert = VertexToColor(v);
     if (dev->m_ColorOp == D3DTOP_SELECTARG1 && dev->m_ColorArg1 == D3DTA_TEXTURE)
         return WHITE;
     if (dev->m_ColorArg2 == D3DTA_TFACTOR)
@@ -163,13 +169,13 @@ void PlanitiaD3DDevice::DrawPrimitive(DWORD type, UINT start, UINT count)
 
     for (UINT i = 0; i < count + 2 && start + i < m_CurrentVB->vertices.size(); ++i)
     {
-        const PlanitiaVertex& v = m_CurrentVB->vertices[start + i];
-        Color c = ResolveVertexColor(this, v);
+        const Vertex& vtx = m_CurrentVB->vertices[start + i];
+        Color c = ResolveVertexColor(this, vtx);
         float tu, tv;
-        ApplyTexCoords(this, v, tu, tv);
+        ApplyTexCoords(this, vtx, tu, tv);
         rlColor4ub(c.r, c.g, c.b, c.a);
         rlTexCoord2f(tu, tv);
-        rlVertex3f(v._x, v._y, v._z);
+        rlVertex3f(vtx.x, vtx.y, vtx.z);
     }
     rlEnd();
     rlSetTexture(0);
@@ -189,14 +195,14 @@ void PlanitiaD3DDevice::DrawIndexedPrimitive(DWORD, INT, UINT, UINT, UINT startI
             if (idx >= m_CurrentIB->indices.size()) continue;
             WORD vi = m_CurrentIB->indices[idx];
             if (vi >= m_CurrentVB->vertices.size()) continue;
-            const PlanitiaVertex& v = m_CurrentVB->vertices[vi];
-            Color c = ResolveVertexColor(this, v);
+            const Vertex& vtx = m_CurrentVB->vertices[vi];
+            Color c = ResolveVertexColor(this, vtx);
             if (m_AlphaTest && c.a < m_AlphaRef) c.a = 0;
             float tu, tv;
-            ApplyTexCoords(this, v, tu, tv);
+            ApplyTexCoords(this, vtx, tu, tv);
             rlColor4ub(c.r, c.g, c.b, c.a);
             rlTexCoord2f(tu, tv);
-            rlVertex3f(v._x, v._y, v._z);
+            rlVertex3f(vtx.x, vtx.y, vtx.z);
         }
     }
     rlEnd();
@@ -206,18 +212,9 @@ void PlanitiaD3DDevice::DrawIndexedPrimitive(DWORD, INT, UINT, UINT, UINT startI
 void PlanitiaD3DDevice::GetViewport(D3DVIEWPORT9* vp)
 {
     if (!vp) return;
-    vp->X = 0;
-    vp->Y = 0;
-    if (gp_Display)
+    if (gp_Scene)
     {
-        vp->Width = static_cast<DWORD>(gp_Display->m_HRes);
-        vp->Height = static_cast<DWORD>(gp_Display->m_VRes);
+        vp->Width = static_cast<DWORD>(gp_Scene->m_HRes);
+        vp->Height = static_cast<DWORD>(gp_Scene->m_VRes);
     }
-    else
-    {
-        vp->Width = 1600;
-        vp->Height = 900;
-    }
-    vp->MinZ = 0;
-    vp->MaxZ = 1;
 }

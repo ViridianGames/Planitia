@@ -47,6 +47,7 @@ public:
 	//  These functions use JSON to store GUI layouts
 	void Serialize(std::string filename);
 	void Deserialize(std::string filename);
+	void LoadLegacyFile(const std::string& fileName);
 
 	GuiTextButton* AddTextButton(int ID, int posx, int posy, int width, int height, std::string text, Font* font,
 		Color textcolor = (Color{ 255, 255, 255, 255 }),

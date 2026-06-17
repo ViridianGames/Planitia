@@ -272,6 +272,15 @@ inline Color ModulateColors(Color tex, Color vert)
     };
 }
 
+#include "Geist/Primitives.h"
+
+inline Vertex MakeTerrainVertex(float x, float y, float z, DWORD color, float u, float v, float u2 = 0, float v2 = 0)
+{
+    (void)u2;
+    (void)v2;
+    return CreateVertex(x, y, z, D3DColorToRaylib(color), u, v);
+}
+
 inline std::string NormalizePath(std::string path)
 {
     for (char& ch : path)

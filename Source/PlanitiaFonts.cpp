@@ -1,6 +1,6 @@
 #include "PlanitiaFonts.h"
 #include "PlanitiaGlobals.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "Geist/Engine.h"
 #include "Geist/Globals.h"
 
@@ -33,14 +33,14 @@ void ShutdownPlanitiaFonts()
 
 float PlanitiaUIScaleX()
 {
-    if (!gp_Display) return 1.0f;
-    return gp_Display->UIScaleX();
+    if (!gp_Scene) return 1.0f;
+    return gp_Scene->UIScaleX();
 }
 
 float PlanitiaUIScaleY()
 {
-    if (!gp_Display) return 1.0f;
-    return gp_Display->UIScaleY();
+    if (!gp_Scene) return 1.0f;
+    return gp_Scene->UIScaleY();
 }
 
 float PlanitiaMeasureText(const Font& font, float logicalSize, const std::string& text)

@@ -1,11 +1,19 @@
 #include "PlanitiaGlobals.h"
-#include "PlanitiaDisplay.h"
-#include "PlanitiaEngineAdapter.h"
-#include "PlanitiaResourceManager.h"
+#include "PlanitiaScene.h"
+
+#include "Geist/Config.h"
+#include "Geist/Globals.h"
+#include "Geist/ResourceManager.h"
+#include "PlanitiaMeshCache.h"
+#include "PlanitiaTypes.h"
 #include "PlanitiaInput.h"
+#include "PlanitiaEngineAdapter.h"
 #include "Terrain.h"
-#include "PlanitiaConfig.h"
+
 #include "PlanitiaProfile.h"
+
+#include "raymath.h"
+#include "rlgl.h"
 
 #include <cstdint>
 #include <cstring>
@@ -14,6 +22,119 @@
 
 using namespace std;
 
+namespace {
+
+Mesh BuildMeshFromVerticesAndIndices(const vector<Vertex>& vertices, const vector<unsigned short>& indices)
+{
+	Mesh mesh{};
+	const int vertexCount = static_cast<int>(vertices.size());
+	const int indexCount = static_cast<int>(indices.size());
+	mesh.vertexCount = vertexCount;
+	mesh.triangleCount = indexCount / 3;
+
+	if (vertexCount > 0)
+	{
+		mesh.vertices = static_cast<float*>(MemAlloc(static_cast<unsigned int>(vertexCount * 3 * sizeof(float))));
+		mesh.texcoords = static_cast<float*>(MemAlloc(static_cast<unsigned int>(vertexCount * 2 * sizeof(float))));
+		mesh.colors = static_cast<unsigned char*>(MemAlloc(static_cast<unsigned int>(vertexCount * 4)));
+
+		for (int i = 0; i < vertexCount; ++i)
+		{
+			const Vertex& v = vertices[static_cast<size_t>(i)];
+			mesh.vertices[i * 3 + 0] = v.x;
+			mesh.vertices[i * 3 + 1] = v.y;
+			mesh.vertices[i * 3 + 2] = v.z;
+			mesh.texcoords[i * 2 + 0] = v.u;
+			mesh.texcoords[i * 2 + 1] = v.v;
+			mesh.colors[i * 4 + 0] = static_cast<unsigned char>(v.r);
+			mesh.colors[i * 4 + 1] = static_cast<unsigned char>(v.g);
+			mesh.colors[i * 4 + 2] = static_cast<unsigned char>(v.b);
+			mesh.colors[i * 4 + 3] = static_cast<unsigned char>(v.a);
+		}
+	}
+
+	if (indexCount > 0)
+	{
+		mesh.indices = static_cast<unsigned short*>(
+			MemAlloc(static_cast<unsigned int>(indexCount * sizeof(unsigned short))));
+		memcpy(mesh.indices, indices.data(), static_cast<size_t>(indexCount) * sizeof(unsigned short));
+	}
+
+	UploadMesh(&mesh, true);
+	return mesh;
+}
+
+Mesh BuildMeshFromTriangleList(const vector<Vertex>& vertices)
+{
+	vector<unsigned short> indices(vertices.size());
+	for (size_t i = 0; i < vertices.size(); ++i)
+		indices[i] = static_cast<unsigned short>(i);
+	return BuildMeshFromVerticesAndIndices(vertices, indices);
+}
+
+void DrawTerrainModel(TerrainDrawMesh& drawMesh, Texture* texture, Color tint = WHITE)
+{
+	if (!drawMesh.loaded || drawMesh.triangleCount <= 0 || !texture)
+		return;
+
+	SetMaterialTexture(&drawMesh.model.materials[0], MATERIAL_MAP_DIFFUSE, *texture);
+	DrawModel(drawMesh.model, Vector3{0, 0, 0}, 1.0f, tint);
+}
+
+Model BuildBackgroundModel(const vector<Vertex>& vertices)
+{
+	vector<unsigned short> indices;
+	if (vertices.size() >= 4)
+	{
+		indices = {0, 1, 2, 1, 2, 3};
+	}
+	else if (vertices.size() >= 3)
+	{
+		indices = {0, 1, 2};
+	}
+
+	Mesh mesh = BuildMeshFromVerticesAndIndices(vertices, indices);
+	return LoadModelFromMesh(mesh);
+}
+
+} // namespace
+
+void Terrain::UnloadDrawMesh(TerrainDrawMesh& drawMesh)
+{
+	if (drawMesh.loaded)
+	{
+		UnloadModel(drawMesh.model);
+		drawMesh.loaded = false;
+	}
+	drawMesh.triangleCount = 0;
+}
+
+void Terrain::RebuildTypeMesh(int type, const vector<unsigned short>& indices)
+{
+	UnloadDrawMesh(m_TypeMeshes[type]);
+	m_IndexBufferSizes[type] = static_cast<int>(indices.size());
+
+	if (indices.empty())
+		return;
+
+	Mesh mesh = BuildMeshFromVerticesAndIndices(m_Vertices, indices);
+	m_TypeMeshes[type].model = LoadModelFromMesh(mesh);
+	m_TypeMeshes[type].loaded = true;
+	m_TypeMeshes[type].triangleCount = static_cast<int>(indices.size()) / 3;
+}
+
+void Terrain::RebuildMeshFromVertices(TerrainDrawMesh& drawMesh, const vector<Vertex>& vertices)
+{
+	UnloadDrawMesh(drawMesh);
+	if (vertices.empty())
+		return;
+
+	Mesh mesh = BuildMeshFromTriangleList(vertices);
+	drawMesh.model = LoadModelFromMesh(mesh);
+	drawMesh.loaded = true;
+	drawMesh.triangleCount = static_cast<int>(vertices.size()) / 3;
+}
+
 Background::~Background()
 {
    Shutdown();
@@ -21,54 +142,38 @@ Background::~Background()
 
 void Background::Init(const std::string& configfile)
 {
+   (void)configfile;
    m_IsDead = false;
-   m_Mesh = gp_ResourceManager->GetMesh("Data/Meshes/standard.txt");
-   m_Background = gp_ResourceManager->GetBitmap("Images/clouds.png");
+   LoadedMesh* meshData = GetLoadedMesh("Data/Meshes/standard.txt");
+   m_Background = g_ResourceManager->GetTexture(NormalizePath("Images/clouds.png"));
+   if (meshData && !meshData->m_VertexList.empty())
+   {
+      m_Model = BuildBackgroundModel(meshData->m_VertexList);
+      m_ModelLoaded = true;
+   }
 }
 
 void Background::Shutdown()
 {
-   /* resource manager owns bitmap */
+   if (m_ModelLoaded)
+   {
+      UnloadModel(m_Model);
+      m_ModelLoaded = false;
+   }
 }
 
 void Background::Update()
 {
-   gp_Display->AddUnit(g_Background);
+
 }
 
 void Background::Draw()
 {
-   gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-   gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-   gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
+   if (!m_ModelLoaded || !m_Background)
+      return;
 
-   D3DXMATRIX _Translate, _Scale;
-
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-
-   gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-   gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
-   gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHAREF, (DWORD)8);
-   gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
-
-   D3DXMATRIX matTrans;
-   D3DXMatrixIdentity(&matTrans);
-   gp_Display->m_D3DDevice.SetTransform(D3DTS_WORLD, &matTrans);
-
-   gp_Display->m_D3DDevice.SetStreamSource(0, m_Mesh->m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-
-   gp_Display->m_D3DDevice.SetFVF(FVF);
-
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-   gp_Display->m_D3DDevice.SetTexture(0, m_Background->m_Bitmap);
-   gp_Display->m_D3DDevice.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
-
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-   gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+   SetMaterialTexture(&m_Model.materials[0], MATERIAL_MAP_DIFFUSE, *m_Background);
+   DrawModel(m_Model, Vector3{0, 0, 0}, 1.0f, WHITE);
 }
 
 
@@ -86,23 +191,14 @@ void Terrain::Init(const std::string& configfile)
 
 	m_TerrainHitColor = D3DCOLOR_ARGB(255, 255, 255, 255);
 
-	m_VertexBuffer = NULL;
-	for(int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
-	{
-		m_IndexBuffer[i] = NULL;
-	}
-
-	m_WaterVertexBuffer = NULL;
-	m_WaterIndexBuffer = NULL;
-
-	LoadConfigFile(m_UnitConfig, configfile);
+	m_UnitConfig.Load(configfile);
 
 	m_IsDead = false;
 
 	m_ShowTerrainHit = false;
 
-	m_CellWidth = m_UnitConfig["width"].numdata;
-	m_CellHeight = m_UnitConfig["height"].numdata;
+	m_CellWidth = m_UnitConfig.GetNumber("width");
+	m_CellHeight = m_UnitConfig.GetNumber("height");
 
 	m_VertexWidth = m_CellWidth + 1;
 	m_VertexHeight = m_CellHeight + 1;
@@ -113,7 +209,7 @@ void Terrain::Init(const std::string& configfile)
 	m_WaterHeight = 1.0f;
 
 	ifstream instream;
-	string filename = m_UnitConfig["map"].stringdata;
+	string filename = m_UnitConfig.GetString("map");
 
 	
 
@@ -125,48 +221,48 @@ void Terrain::Init(const std::string& configfile)
 
 	memset(m_Values, 0, m_VertexWidth * m_VertexHeight * sizeof(float));
 
-	InitializeMap(m_UnitConfig["seed"].numdata);
-//	gp_Display->m_Camera.m_LookAtPoint.x = m_VertexWidth / 2;
-//	gp_Display->m_Camera.m_LookAtPoint.z = m_VertexHeight / 2;
-//	gp_Display->m_Camera.m_LookAtPoint.y = GetHeight(m_VertexWidth / 2, m_VertexHeight / 2);
+	InitializeMap(m_UnitConfig.GetNumber("seed"));
+//	gp_Scene->m_Camera.m_LookAtPoint.x = m_VertexWidth / 2;
+//	gp_Scene->m_Camera.m_LookAtPoint.z = m_VertexHeight / 2;
+//	gp_Scene->m_Camera.m_LookAtPoint.y = GetHeight(m_VertexWidth / 2, m_VertexHeight / 2);
 
 //	instream.close();
 
-//	m_Texture = gp_ResourceManager->GetBitmap(m_UnitConfig["texture"].stringdata);
+//	m_Texture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("texture")));
 
-	m_ShallowWaterTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["shallowwatertexture"].stringdata);
+	m_ShallowWaterTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("shallowwatertexture")));
 
-	m_DeepWaterTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["deepwatertexture"].stringdata);
+	m_DeepWaterTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("deepwatertexture")));
 
-	m_SandTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["sandtexture"].stringdata);
+	m_SandTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("sandtexture")));
 
-	m_GrassTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["grasstexture"].stringdata);
+	m_GrassTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("grasstexture")));
 
-	m_RuinTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["ruintexture"].stringdata);
+	m_RuinTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("ruintexture")));
 
-	m_MaskTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["masktexture"].stringdata);
+	m_MaskTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("masktexture")));
 
-	m_BlessTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["blesstexture"].stringdata);
+	m_BlessTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("blesstexture")));
 
-	m_LavaTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["lavatexture"].stringdata);
+	m_LavaTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("lavatexture")));
 
-	m_FarmTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["farmtexture"].stringdata);
+	m_FarmTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("farmtexture")));
 
-	m_HouseTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["housetexture"].stringdata);
+	m_HouseTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("housetexture")));
 
-	m_SwampTexture = gp_ResourceManager->GetBitmap(m_UnitConfig["swamptexture"].stringdata);
+	m_SwampTexture = g_ResourceManager->GetTexture(NormalizePath(m_UnitConfig.GetString("swamptexture")));
 
-	m_TerrainHighlightRing = gp_ResourceManager->GetBitmap("Images/TerrainHighlightRing.png");
+	m_TerrainHighlightRing = g_ResourceManager->GetTexture(NormalizePath("Images/TerrainHighlightRing.png"));
 
 	//  Since we are constructing this one ourselves, we will "own" this bitmap rather than the
 	//  resource manager (which only handles loaded files).
 
-	m_MiniMapTexture = new Bitmap();
-	m_MiniMapTexture->m_Owned = true;
-	gp_Display->m_D3DDevice.CreateTexture(m_CellWidth, m_CellHeight, 1, D3DUSAGE_DYNAMIC,
-		D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &m_MiniMapTexture->m_Bitmap, nullptr);
-	m_MiniMapTexture->m_Width = static_cast<float>(m_CellWidth);
-	m_MiniMapTexture->m_Height = static_cast<float>(m_CellHeight);
+	
+	
+	m_MiniMapTexture = new Texture2D;
+	Image minimapImage = GenImageColor(m_CellWidth, m_CellHeight, BLACK);
+	*m_MiniMapTexture = LoadTextureFromImage(minimapImage);
+	UnloadImage(minimapImage);
 	
 	FindTerrainTypes();
 	UpdateMiniMap();
@@ -174,43 +270,12 @@ void Terrain::Init(const std::string& configfile)
 	m_TerrainViewRange = 25;
 
 
-	if(gp_Display->m_HardwareVertexProcessingSupported)
-	{
+	if(gp_Scene->m_HardwareVertexProcessingSupported)
 		m_VertexBufferSize = m_CellHeight * m_CellWidth * 5;
-	}
 	else
-	{
 		m_VertexBufferSize = m_CellHeight * m_CellWidth * 4;
-	}
 
-	gp_Display->m_D3DDevice.CreateVertexBuffer( sizeof(PlanitiaVertex) * m_VertexBufferSize, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, FVF,
-		D3DPOOL_DEFAULT, &m_VertexBuffer, NULL);
-
-	gp_Display->m_D3DDevice.CreateVertexBuffer( sizeof(PlanitiaVertex) * m_CellWidth * m_CellHeight * 4, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, FVF,
-		D3DPOOL_DEFAULT, &m_WaterVertexBuffer, NULL);
-
-	gp_Display->m_D3DDevice.CreateVertexBuffer( sizeof(PlanitiaVertex) * 12, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, FVF,
-		D3DPOOL_DEFAULT, &m_HighlightVertexBuffer, NULL);
-
-    for(int i = 0; i < 4; ++i)
-    {
-        gp_Display->m_D3DDevice.CreateVertexBuffer( sizeof(PlanitiaVertex) * 12, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, FVF,
-            D3DPOOL_DEFAULT, &m_ColoredHighlightVertexBuffer[i], NULL);
-    }
-
-	for(int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
-	{
-		gp_Display->m_D3DDevice.CreateIndexBuffer( sizeof(WORD) * m_CellWidth * m_CellHeight * 12, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
-			D3DPOOL_MANAGED, &m_IndexBuffer[i], NULL);
-	}
-
-	gp_Display->m_D3DDevice.CreateIndexBuffer( sizeof(WORD) * m_CellWidth * m_CellHeight * 6, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
-		D3DPOOL_MANAGED, &m_WaterIndexBuffer, NULL);
-
-//	CreateVertexBuffers(true);
-//	CreateIndexBuffers();
-//	CreateWaterVertexBuffer();
-//	CreateWaterIndexBuffer();
+	m_Vertices.resize(static_cast<size_t>(m_VertexBufferSize));
 
 	m_TerrainSwitcher = true;
 
@@ -218,7 +283,7 @@ void Terrain::Init(const std::string& configfile)
 
 	m_DidWeRecreateVertexBuffersLastFrame = false;
 
-	g_NumberOfPlayers = m_UnitConfig["players"].numdata;
+	g_NumberOfPlayers = m_UnitConfig.GetNumber("players");
 
 	int stopper = 0;
 }
@@ -313,14 +378,9 @@ void Terrain::InitializeMap(int seed)
 
 void Terrain::Draw()
 {
-	gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-	gp_Display->m_D3DDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
-
 	m_NumberOfTrisDrawnThisFrame = 0;
-
- 	DrawTerrain();
-   DrawHighlightMarker();
+	DrawTerrain();
+	DrawHighlightMarker();
 	DrawWater();
 }
 
@@ -467,9 +527,9 @@ void Terrain::Update()
 		_DoWeNeedToUpdateMinimap = true;
 	}
 
-	if(m_DoWeNeedToRecreateVertexBuffers || gp_Display->m_Camera.m_DidCameraChangeThisFrame)
+	if(m_DoWeNeedToRecreateVertexBuffers || gp_Scene->m_Camera.m_DidCameraChangeThisFrame)
 	{
-		CreateVertexBuffers(false);
+		CreateVertexBuffers(m_DoWeNeedToRecreateVertexBuffers);
 		m_DidWeRecreateVertexBuffersLastFrame = true;
 	}
 	else
@@ -480,7 +540,7 @@ void Terrain::Update()
 	CreateWaterVertexBuffer();
 	CreateHighlightVertexBuffer();
 
-	if(m_DoWeNeedToRecreateIndexBuffers || gp_Display->m_Camera.m_DidCameraChangeThisFrame)
+	if(m_DoWeNeedToRecreateIndexBuffers || gp_Scene->m_Camera.m_DidCameraChangeThisFrame)
 	{
 		CreateIndexBuffers();
 	}
@@ -491,7 +551,7 @@ void Terrain::Update()
 	}
 
    
-	gp_Display->AddUnit( g_Terrain );
+
    
 }
 
@@ -500,19 +560,20 @@ void Terrain::Shutdown()
 	delete [] m_Values;
 	delete [] m_TerrainTypes;
 
-	if (m_VertexBuffer) { delete m_VertexBuffer; m_VertexBuffer = nullptr; }
-	if (m_WaterVertexBuffer) { delete m_WaterVertexBuffer; m_WaterVertexBuffer = nullptr; }
-	if (m_HighlightVertexBuffer) { delete m_HighlightVertexBuffer; m_HighlightVertexBuffer = nullptr; }
-	for (int i = 0; i < 4; ++i)
-	{
-		if (m_ColoredHighlightVertexBuffer[i]) { delete m_ColoredHighlightVertexBuffer[i]; m_ColoredHighlightVertexBuffer[i] = nullptr; }
-	}
-	if (m_WaterIndexBuffer) { delete m_WaterIndexBuffer; m_WaterIndexBuffer = nullptr; }
 	for (int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
+		UnloadDrawMesh(m_TypeMeshes[i]);
+	UnloadDrawMesh(m_WaterMesh);
+	UnloadDrawMesh(m_HighlightMesh);
+	for (int i = 0; i < 4; ++i)
+		UnloadDrawMesh(m_ColoredHighlightMeshes[i]);
+	m_Vertices.clear();
+	m_WaterVertices.clear();
+	if (m_MiniMapTexture)
 	{
-		if (m_IndexBuffer[i]) { delete m_IndexBuffer[i]; m_IndexBuffer[i] = nullptr; }
+		UnloadTexture(*m_MiniMapTexture);
+		delete m_MiniMapTexture;
+		m_MiniMapTexture = nullptr;
 	}
-	if (m_MiniMapTexture) { delete m_MiniMapTexture; m_MiniMapTexture = nullptr; }
 }
 
 float Terrain::GetValue(int x, int y)
@@ -567,9 +628,7 @@ void Terrain::CreateHighlightVertexBuffer()
 	x = i - .5;
     y = j - .5;
 
-	PlanitiaVertex* _Vertices;
-
-	m_HighlightVertexBuffer->Lock(0, 12 * sizeof(PlanitiaVertex), (void**)&_Vertices, 0);
+	vector<Vertex> highlightVertices(12);
 
 	DWORD lighting = D3DCOLOR_ARGB(255, 255, 255, 255);
 
@@ -596,20 +655,20 @@ void Terrain::CreateHighlightVertexBuffer()
 //    D3DXVec3TransformCoord( &coord, &coord, &transform );
     
 
-	_Vertices[0] =  PlanitiaVertex( x     , GetHeight (x     , y      ), y     , lighting,  corners[0].x, corners[0].z  );
-	_Vertices[1] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  corners[1].x, corners[1].z  );
-	_Vertices[2] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5,        .5 );
-	_Vertices[3] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  corners[1].x, corners[1].z  );
-	_Vertices[4] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  corners[2].x, corners[2].z  );
-	_Vertices[5] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5, .5 );
-	_Vertices[6] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  corners[2].x, corners[2].z  );
-	_Vertices[7] =  PlanitiaVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  corners[3].x, corners[3].z  );
-	_Vertices[8] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
-	_Vertices[9] =  PlanitiaVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  corners[3].x, corners[3].z  );
-	_Vertices[10] = PlanitiaVertex( x     , GetHeight (x     , y      ), y     , lighting,  corners[0].x, corners[0].z  );
-	_Vertices[11] = PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
+	highlightVertices[0] =  MakeTerrainVertex( x     , GetHeight (x     , y      ), y     , lighting,  corners[0].x, corners[0].z  );
+	highlightVertices[1] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  corners[1].x, corners[1].z  );
+	highlightVertices[2] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5,        .5 );
+	highlightVertices[3] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  corners[1].x, corners[1].z  );
+	highlightVertices[4] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  corners[2].x, corners[2].z  );
+	highlightVertices[5] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5, .5 );
+	highlightVertices[6] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  corners[2].x, corners[2].z  );
+	highlightVertices[7] =  MakeTerrainVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  corners[3].x, corners[3].z  );
+	highlightVertices[8] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
+	highlightVertices[9] =  MakeTerrainVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  corners[3].x, corners[3].z  );
+	highlightVertices[10] = MakeTerrainVertex( x     , GetHeight (x     , y      ), y     , lighting,  corners[0].x, corners[0].z  );
+	highlightVertices[11] = MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
 
-	m_HighlightVertexBuffer->Unlock();
+	RebuildMeshFromVertices(m_HighlightMesh, highlightVertices);
 
     for( int i = 0; i < 4; ++i )
     {
@@ -617,29 +676,27 @@ void Terrain::CreateHighlightVertexBuffer()
         {
             if( g_Players[i]->m_General != NULL )
             {
-                PlanitiaVertex* _Vertices;
+                vector<Vertex> playerHighlightVertices(12);
 
                 float x = g_Players[i]->m_General->m_Pos.x - .5;
                 float y = g_Players[i]->m_General->m_Pos.z - .5;
 
-                m_ColoredHighlightVertexBuffer[i]->Lock(0, 12 * sizeof(PlanitiaVertex), (void**)&_Vertices, 0);
-
                 DWORD lighting = D3DCOLOR_ARGB(255, 255, 255, 255);
 
-                _Vertices[0] =  PlanitiaVertex( x     , GetHeight (x     , y      ), y     , lighting,  0,         0         );
-                _Vertices[1] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  0,         1  );
-                _Vertices[2] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5,        .5 );
-                _Vertices[3] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  0,         1  );
-                _Vertices[4] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  1 , 1  );
-                _Vertices[5] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5, .5 );
-                _Vertices[6] =  PlanitiaVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  1 , 1  );
-                _Vertices[7] =  PlanitiaVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  1 , 0         );
-                _Vertices[8] =  PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
-                _Vertices[9] =  PlanitiaVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  1 , 0         );
-                _Vertices[10] = PlanitiaVertex( x     , GetHeight (x     , y      ), y     , lighting,  0       , 0         );
-                _Vertices[11] = PlanitiaVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
+                playerHighlightVertices[0] =  MakeTerrainVertex( x     , GetHeight (x     , y      ), y     , lighting,  0,         0         );
+                playerHighlightVertices[1] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  0,         1  );
+                playerHighlightVertices[2] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5,        .5 );
+                playerHighlightVertices[3] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y      ), y     , lighting,  0,         1  );
+                playerHighlightVertices[4] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  1 , 1  );
+                playerHighlightVertices[5] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,                .5, .5 );
+                playerHighlightVertices[6] =  MakeTerrainVertex( x +  1, GetHeight (x +  1, y +  1 ), y +  1, lighting,  1 , 1  );
+                playerHighlightVertices[7] =  MakeTerrainVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  1 , 0         );
+                playerHighlightVertices[8] =  MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
+                playerHighlightVertices[9] =  MakeTerrainVertex( x     , GetHeight (x     , y +  1 ), y +  1, lighting,  1 , 0         );
+                playerHighlightVertices[10] = MakeTerrainVertex( x     , GetHeight (x     , y      ), y     , lighting,  0       , 0         );
+                playerHighlightVertices[11] = MakeTerrainVertex( x + .5, GetHeight (x + .5, y + .5 ), y + .5, lighting,  .5, .5 );
 
-                m_ColoredHighlightVertexBuffer[i]->Unlock();
+                RebuildMeshFromVertices(m_ColoredHighlightMeshes[i], playerHighlightVertices);
             }
         }
     }
@@ -657,28 +714,28 @@ void Terrain::CreateIndexBuffers()
 	}
 
 	//  FIRST we must count up how many vertices there will be for each terrain type.
-	int starti = gp_Display->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
+	int starti = gp_Scene->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
 	if(starti < 0) starti = 0;
-	int stopi = gp_Display->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
-	if(stopi > m_CellWidth) stopi = m_CellWidth;
+	int stopi = gp_Scene->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
+	if(stopi > m_CellWidth - 1) stopi = m_CellWidth - 1;
 
-	int startj = gp_Display->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
+	int startj = gp_Scene->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
 	if(startj < 0) startj = 0;
-	int stopj = gp_Display->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
-	if(stopj > m_CellHeight) stopj = m_CellHeight;
+	int stopj = gp_Scene->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
+	if(stopj > m_CellHeight - 1) stopj = m_CellHeight - 1;
 
 	for(int i = starti; i <= stopi; ++i)
 	{
-		for(int j = startj; j < stopj; ++j)
+		for(int j = startj; j <= stopj; ++j)
 		{
-			if(GlobalIsDistanceLessThan(i, j, gp_Display->m_Camera.m_LookAtPoint.x,
-				gp_Display->m_Camera.m_LookAtPoint.z, m_TerrainViewRange) && IsCellVisible(i, j))
+			if(GlobalIsDistanceLessThan(i, j, gp_Scene->m_Camera.m_LookAtPoint.x,
+				gp_Scene->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
 			{
 				int TerrainType = GetTerrainType(i, j);
 
 				if(TerrainType != -1) //  We ran off the grid somehow
 				{
-					if(gp_Display->m_HardwareVertexProcessingSupported)
+					if(gp_Scene->m_HardwareVertexProcessingSupported)
 					{
 						_IndexBuckets[TerrainType].push_back(((i * m_CellWidth + j) * 5)    );
 						_IndexBuckets[TerrainType].push_back(((i * m_CellWidth + j) * 5) + 1);
@@ -726,17 +783,8 @@ void Terrain::CreateIndexBuffers()
 
 	for(int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
 	{
-		if(_IndexBuckets[i].size() > 0)
-		{
-			WORD* _Indices;
-			m_IndexBufferSizes[i] = _IndexBuckets[i].size();
-			m_IndexBuffer[i]->Lock(0, _IndexBuckets[i].size() * sizeof(WORD), (void**)&_Indices, 0);
-			for(int j = 0; j < m_IndexBufferSizes[i]; ++j)
-			{
-				_Indices[j] = _IndexBuckets[i][j];
-			}
-			m_IndexBuffer[i]->Unlock();
-		}
+		vector<unsigned short> indices(_IndexBuckets[i].begin(), _IndexBuckets[i].end());
+		RebuildTypeMesh(i, indices);
 	}
 
 	m_DoWeNeedToRecreateIndexBuffers = false;
@@ -744,25 +792,26 @@ void Terrain::CreateIndexBuffers()
 
 void Terrain::CreateVertexBuffers(bool rebuildall)
 {
-	PlanitiaVertex* _Vertices;
+	if (static_cast<int>(m_Vertices.size()) != m_VertexBufferSize)
+		m_Vertices.resize(static_cast<size_t>(m_VertexBufferSize));
 
-	m_VertexBuffer->Lock(0, m_VertexBufferSize * sizeof(PlanitiaVertex), (void**)&_Vertices, D3DLOCK_DISCARD);
+	Vertex* _Vertices = m_Vertices.data();
 
-	int starti = gp_Display->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
+	int starti = gp_Scene->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
 	if(starti < 0) starti = 0;
-	int stopi = gp_Display->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
+	int stopi = gp_Scene->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
 	if(stopi > m_CellWidth - 1) stopi = m_CellWidth - 1;
 
-	int startj = gp_Display->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
+	int startj = gp_Scene->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
 	if(startj < 0) startj = 0;
-	int stopj = gp_Display->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
+	int stopj = gp_Scene->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
 	if(stopj > m_CellWidth - 1) stopj = m_CellWidth - 1;
 
 	for(int i = starti; i <= stopi; ++i)
 	{
 		for(int j = startj; j <= stopj; ++j)
 		{
-			if(rebuildall || GlobalIsDistanceLessThan(i, j, gp_Display->m_Camera.m_LookAtPoint.x, gp_Display->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
+			if(rebuildall || GlobalIsDistanceLessThan(i, j, gp_Scene->m_Camera.m_LookAtPoint.x, gp_Scene->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
 			{
 				int lightingUL;
 				if(i == 0 || i == m_CellWidth || j == 0 || j == m_CellHeight)
@@ -834,98 +883,79 @@ void Terrain::CreateVertexBuffers(bool rebuildall)
 
 				_u = _Aggregate * .0625f;
 
-				if(gp_Display->m_HardwareVertexProcessingSupported)
+				if(gp_Scene->m_HardwareVertexProcessingSupported)
 				{
-					_Vertices[((i * m_CellWidth) + j) * 5 + 0] =  PlanitiaVertex(i     , GetValue (i    , j    ), j     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL),      i     , j     , _u, _v );
-					_Vertices[((i * m_CellWidth) + j) * 5 + 1] =  PlanitiaVertex(i +  1, GetValue (i + 1, j    ), j     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR),      i +  1, j     , _u + .0625 , _v );
-					_Vertices[((i * m_CellWidth) + j) * 5 + 2] =  PlanitiaVertex(i +  1, GetValue (i + 1, j + 1), j +  1, D3DCOLOR_ARGB(alphaLR, lightingLR, lightingLR, lightingLR),      i +  1, j +  1, _u + .0625 , _v + 1 );
-					_Vertices[((i * m_CellWidth) + j) * 5 + 3] =  PlanitiaVertex(i     , GetValue (i    , j + 1), j +  1, D3DCOLOR_ARGB(alphaLL, lightingLL, lightingLL, lightingLL),      i     , j +  1, _u         , _v + 1 );
-					_Vertices[((i * m_CellWidth) + j) * 5 + 4] =  PlanitiaVertex(i + .5, GetMiddle(i    , j    ), j + .5, D3DCOLOR_ARGB(alphaMID, lightingMID, lightingMID, lightingMID),  i + .5, j + .5, _u + .03125, _v + .5 );
+					_Vertices[((i * m_CellWidth) + j) * 5 + 0] =  MakeTerrainVertex(i     , GetValue (i    , j    ), j     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL),      i     , j     , _u, _v );
+					_Vertices[((i * m_CellWidth) + j) * 5 + 1] =  MakeTerrainVertex(i +  1, GetValue (i + 1, j    ), j     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR),      i +  1, j     , _u + .0625 , _v );
+					_Vertices[((i * m_CellWidth) + j) * 5 + 2] =  MakeTerrainVertex(i +  1, GetValue (i + 1, j + 1), j +  1, D3DCOLOR_ARGB(alphaLR, lightingLR, lightingLR, lightingLR),      i +  1, j +  1, _u + .0625 , _v + 1 );
+					_Vertices[((i * m_CellWidth) + j) * 5 + 3] =  MakeTerrainVertex(i     , GetValue (i    , j + 1), j +  1, D3DCOLOR_ARGB(alphaLL, lightingLL, lightingLL, lightingLL),      i     , j +  1, _u         , _v + 1 );
+					_Vertices[((i * m_CellWidth) + j) * 5 + 4] =  MakeTerrainVertex(i + .5, GetMiddle(i    , j    ), j + .5, D3DCOLOR_ARGB(alphaMID, lightingMID, lightingMID, lightingMID),  i + .5, j + .5, _u + .03125, _v + .5 );
 				}
 				else
 				{
-					_Vertices[((i * m_CellWidth) + j) * 4 + 0] =  PlanitiaVertex(i     , GetValue (i    , j    ), j     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL),  i    , j    , _u, _v);
-					_Vertices[((i * m_CellWidth) + j) * 4 + 1] =  PlanitiaVertex(i +  1, GetValue (i + 1, j    ), j     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR),  i + 1, j    , _u + .0625 , _v);
-					_Vertices[((i * m_CellWidth) + j) * 4 + 2] =  PlanitiaVertex(i +  1, GetValue (i + 1, j + 1), j +  1, D3DCOLOR_ARGB(alphaLR, lightingLR, lightingLR, lightingLR),  i + 1, j + 1, _u + .0625 , _v + 1);
-					_Vertices[((i * m_CellWidth) + j) * 4 + 3] =  PlanitiaVertex(i     , GetValue (i    , j + 1), j +  1, D3DCOLOR_ARGB(alphaLL, lightingLL, lightingLL, lightingLL),  i    , j + 1, _u         , _v + 1);
+					_Vertices[((i * m_CellWidth) + j) * 4 + 0] =  MakeTerrainVertex(i     , GetValue (i    , j    ), j     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL),  i    , j    , _u, _v);
+					_Vertices[((i * m_CellWidth) + j) * 4 + 1] =  MakeTerrainVertex(i +  1, GetValue (i + 1, j    ), j     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR),  i + 1, j    , _u + .0625 , _v);
+					_Vertices[((i * m_CellWidth) + j) * 4 + 2] =  MakeTerrainVertex(i +  1, GetValue (i + 1, j + 1), j +  1, D3DCOLOR_ARGB(alphaLR, lightingLR, lightingLR, lightingLR),  i + 1, j + 1, _u + .0625 , _v + 1);
+					_Vertices[((i * m_CellWidth) + j) * 4 + 3] =  MakeTerrainVertex(i     , GetValue (i    , j + 1), j +  1, D3DCOLOR_ARGB(alphaLL, lightingLL, lightingLL, lightingLL),  i    , j + 1, _u         , _v + 1);
 				}
 			}
 		}
 	}
-
-	m_VertexBuffer->Unlock();
 
 	m_DoWeNeedToRecreateVertexBuffers = false;
 }
 
 void Terrain::CreateWaterVertexBuffer()
 {
-	//  Scan the terrain and find the squares that require water cover.
-	m_WaterVertexBufferSize = 0;
+	m_WaterVertices.clear();
 
-	int starti = gp_Display->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
+	int starti = gp_Scene->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
 	if(starti < 0) starti = 0;
-	int stopi = gp_Display->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
+	int stopi = gp_Scene->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
 	if(stopi > m_CellWidth - 1) stopi = m_CellWidth - 1;
 
-	int startj = gp_Display->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
+	int startj = gp_Scene->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
 	if(startj < 0) startj = 0;
-	int stopj = gp_Display->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
+	int stopj = gp_Scene->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
 	if(stopj > m_CellWidth - 1) stopj = m_CellWidth - 1;
 
-	for(int i = starti; i <= stopi; ++i)
-	{
-		for(int j = startj; j <= stopj; ++j)
-		{
-			if(GlobalIsDistanceLessThan(i, j, gp_Display->m_Camera.m_LookAtPoint.x, gp_Display->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
-			{
-				if(IsWaterCell(i, j))
-					m_WaterVertexBufferSize += 4;
-			}
-		}
-	}
-
-	PlanitiaVertex* _WaterVertices;
-
-	m_WaterVertexBuffer->Lock(0, m_WaterVertexBufferSize * sizeof(PlanitiaVertex), (void**)&_WaterVertices, D3DLOCK_DISCARD);
-
-	int _LocalWaterVertexCounter = 0;
+	vector<unsigned short> waterIndices;
 
 	for(float i = starti; i <= stopi; ++i)
 	{
 		for(float j = startj; j <= stopj; ++j)
 		{
-			if(GlobalIsDistanceLessThan(i, j, gp_Display->m_Camera.m_LookAtPoint.x, gp_Display->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
+			if(GlobalIsDistanceLessThan(i, j, gp_Scene->m_Camera.m_LookAtPoint.x, gp_Scene->m_Camera.m_LookAtPoint.z, m_TerrainViewRange))
 			{
 				if(IsWaterCell(i, j))
 				{
 					int lightingUL;
 					if(i == 0 || i == m_CellWidth || j == 0 || j == m_CellHeight)
 						lightingUL = 0;
-					else					
+					else
 						lightingUL = 192;
-					
+
 					int lightingUR;
 					if((i + 1) == 0 || (i + 1) == m_CellWidth || j == 0 || j == m_CellHeight)
 						lightingUR = 0;
-					else					
+					else
 						lightingUR = 192;
-					
+
 					int lightingLL;
 					if(i == 0 || i == m_CellWidth || (j + 1) == 0 || (j + 1) == m_CellHeight)
 						lightingLL = 0;
-					else					
+					else
 						lightingLL = 192;
-					
+
 					int lightingLR;
 					if((i + 1) == 0 || (i + 1) == m_CellWidth || (j + 1) == 0 || (j + 1) == m_CellHeight)
 						lightingLR = 0;
-					else					
+					else
 						lightingLR = 192;
 
-                    int alphaUL = 192;
-                    int alphaUR = 192;
-                    int alphaLL = 192;
+					int alphaUL = 192;
+					int alphaUR = 192;
+					int alphaLL = 192;
 					int alphaLR = 192;
 
 					float UL = GetWater(i    , j) / 2;
@@ -933,71 +963,41 @@ void Terrain::CreateWaterVertexBuffer()
 					float LL = GetWater(i    , j + 1) / 2;
 					float LR = GetWater(i + 1, j + 1) / 2;
 
-					float x, y, xplus1, yplus1;
+					float x = i;
+					float y = j;
+					float xplus1 = x + 1;
+					float yplus1 = y + 1;
 
-					x = i;
-					y = j;
-					xplus1 = x + 1;
-					yplus1 = y + 1;
+					if(x == 0) x -= .5f;
+					if(y == 0) y -= .5f;
+					if(xplus1 == m_CellWidth) xplus1 += .5f;
+					if(yplus1 == m_CellHeight) yplus1 += .5f;
 
-					if(x == 0)
-						x -= .5;
-					if(y == 0)
-						y -= .5;
-					if(xplus1 == m_CellWidth)
-						xplus1 += .5;
-					if(yplus1 == m_CellHeight)
-						yplus1 += .5;
+					const unsigned short base = static_cast<unsigned short>(m_WaterVertices.size());
+					m_WaterVertices.push_back(MakeTerrainVertex(x     , .2f + UL, y     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL), ((i +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (UL * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i    , j    )), ((j +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (UL * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i    , j    ))));
+					m_WaterVertices.push_back(MakeTerrainVertex(xplus1, .2f + UR, y     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR), ((i + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (UR * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i + 1, j    )), ((j +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (UR * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i + 1, j    ))));
+					m_WaterVertices.push_back(MakeTerrainVertex(xplus1, .2f + LR, yplus1, D3DCOLOR_ARGB(alphaUL, lightingLR, lightingLR, lightingLR), ((i + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (LR * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i + 1, j + 1)), ((j + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (LR * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i + 1, j + 1))));
+					m_WaterVertices.push_back(MakeTerrainVertex(x     , .2f + LL, yplus1, D3DCOLOR_ARGB(alphaUL, lightingLL, lightingLL, lightingLL), ((i +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (LL * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i    , j + 1)), ((j + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25f) + (LL * 2) - (.1f * gp_Scene->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i    , j + 1))));
 
-					_WaterVertices[_LocalWaterVertexCounter + 0] =  PlanitiaVertex(x     , .2 + UL, y     , D3DCOLOR_ARGB(alphaUL, lightingUL, lightingUL, lightingUL),  ((i +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (UL * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i    , j    )), ((j +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (UL * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i    , j    )));
-					_WaterVertices[_LocalWaterVertexCounter + 1] =  PlanitiaVertex(xplus1, .2 + UR, y     , D3DCOLOR_ARGB(alphaUR, lightingUR, lightingUR, lightingUR),  ((i + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (UR * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i + 1, j    )), ((j +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (UR * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i + 1, j    )));
-					_WaterVertices[_LocalWaterVertexCounter + 2] =  PlanitiaVertex(xplus1, .2 + LR, yplus1, D3DCOLOR_ARGB(alphaUL, lightingLR, lightingLR, lightingLR),  ((i + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (LR * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i + 1, j + 1)), ((j + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (LR * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i + 1, j + 1)));
-					_WaterVertices[_LocalWaterVertexCounter + 3] =  PlanitiaVertex(x     , .2 + LL, yplus1, D3DCOLOR_ARGB(alphaUL, lightingLL, lightingLL, lightingLL),  ((i +     (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (LL * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.x) + (2 * GetValue(i    , j + 1)), ((j + 1 + (gp_Engine->m_GameTimeInSeconds / 2)) * .25) + (LL * 2) - (.1 *gp_Display->m_Camera.m_LookAtPoint.z) + (2 * GetValue(i    , j + 1)));
-
-					_LocalWaterVertexCounter += 4;
+					waterIndices.push_back(base + 0);
+					waterIndices.push_back(base + 1);
+					waterIndices.push_back(base + 3);
+					waterIndices.push_back(base + 2);
+					waterIndices.push_back(base + 3);
+					waterIndices.push_back(base + 1);
 				}
 			}
 		}
 	}
 
-	m_WaterVertexBuffer->Unlock();
-
-	if(m_WaterVertexBufferSize != _LocalWaterVertexCounter)
+	UnloadDrawMesh(m_WaterMesh);
+	if (!m_WaterVertices.empty())
 	{
-		int stopper = 0;
+		Mesh mesh = BuildMeshFromVerticesAndIndices(m_WaterVertices, waterIndices);
+		m_WaterMesh.model = LoadModelFromMesh(mesh);
+		m_WaterMesh.loaded = true;
+		m_WaterMesh.triangleCount = static_cast<int>(waterIndices.size()) / 3;
 	}
-
-	CreateWaterIndexBuffer();
-}
-
-void Terrain::CreateWaterIndexBuffer()
-{
-	//  Create Index buffer.  This is simple, since we're just drawing everything.
-
-	//  Now we need to actually fill out the vertex and index buffers.
-	int _NumberOfWaterCells = (m_WaterVertexBufferSize / 4);
-	m_WaterIndexBufferSize = _NumberOfWaterCells * 6;
-
-
-	WORD* _Indices;
-	int _LocalIndexCounter = 0;
-
-	m_WaterIndexBuffer->Lock(0, m_WaterIndexBufferSize * sizeof(WORD), (void**)&_Indices, 0);
-
-	int cellindex = 0;
-	for(int i = 0; i < _NumberOfWaterCells; ++i)
-	{
-		_Indices[_LocalIndexCounter +  0] =  i * 4;
-		_Indices[_LocalIndexCounter +  1] =  i * 4 + 1;
-		_Indices[_LocalIndexCounter +  2] =  i * 4 + 3;
-		_Indices[_LocalIndexCounter +  3] =  i * 4 + 2;
-		_Indices[_LocalIndexCounter +  4] =  i * 4 + 3;
-		_Indices[_LocalIndexCounter +  5] =  i * 4 + 1;
-
-		_LocalIndexCounter += 6;
-	}
-
-	m_WaterIndexBuffer->Unlock();
 }
 
 float Terrain::GetWater(float x, float y)
@@ -1020,83 +1020,18 @@ void Terrain::GetTerrainHit(int &x, int &y)
 {
 	static int resultx = 0;
 	static int resulty = 0;
-	//  First things first; we must compute the picking ray.  We know the origin
-	//  of the picking ray; it's the current position of the camera.  We need
-	//  to turn the 2D mouse coordinates into a 3D point that will represent the
-	//  end of the ray.  Since we can get the current mouse coordinates straight
-	//  from the Input subsystem and already know our projection matrix, we
-	//  don't need any additional information to get the ray.
 
-	//  We turn our 2D coordinates into 3D coordinates by doing an inverse of
-	//  the projection transform.  The projection transform turns 3D points into
-	//  2D screen space points; we need to do the exact opposite.  We already
-	//  know our z-coordinate; the projection matrix always projects points
-	//  such that z is equal to 1.
-	float _ProjectedX;
-	float _ProjectedY;
-	float _ProjectedZ = 1.0f;
-
-	D3DXMATRIX _Proj; // The inverse 
-	gp_Display->m_D3DDevice.GetTransform(D3DTS_PROJECTION, &_Proj);
-
-	_ProjectedX = (( float( 2.0f * gp_Input->m_MouseX) / float(gp_Display->m_HRes) ) - 1.0f) / _Proj(0, 0);
-	_ProjectedY = (( float(-2.0f * gp_Input->m_MouseY) / float(gp_Display->m_VRes) ) + 1.0f) / _Proj(1, 1);
-
-	D3DXVECTOR3 _RayOrigin = D3DXVECTOR3(0, 0, 0);
-	D3DXVECTOR3 _RayDirection = D3DXVECTOR3(_ProjectedX, _ProjectedY, _ProjectedZ);
-	D3DXVec3Normalize(&_RayDirection, &_RayDirection);
-
-	//  Woohoo, we've got our ray!  But we've got a problem.  This ray is in VIEW
-	//  SPACE.  We need to get the ray into WORLD SPACE.  We do that by finding
-	//  the inverse of the view transformation and applying it to both the location
-	//  and the direction of the ray.
-
-	D3DXMATRIX _correctForCamera;
-	gp_Display->m_D3DDevice.GetTransform(D3DTS_VIEW, &_correctForCamera);
-	D3DXMatrixInverse(&_correctForCamera, 0, &_correctForCamera);
-	D3DXVec3TransformCoord(&_RayOrigin, &_RayOrigin, &_correctForCamera);
-	D3DXVec3TransformNormal(&_RayDirection, &_RayDirection, &_correctForCamera);
-
-	//  Woohoo, we've got our ray!  But we've got a problem.  This ray is in
-	//  WORLD SPACE.  The triangle we're testing against is in its own
-	//  MODEL SPACE.  One is going to have to get transformed into the other
-	//  before we can compare the two.  Now, once upon a time we would have had
-	//  to transform our model's vertices into world space by hand on every
-	//  frame, thus we would have had a handy copy of our model in world space
-	//  to use.  Since D3D does all the transformation for us, we have no handy
-	//  copy and the only geometry we have is in model space.  Thus, we will
-	//  transform the ray into the model space.  We do this by tranforming it
-	//  by the INVERSE of the model's current transformation matrix (which we
-	//  must create and store ourselves, so we do have access to it).
-
-//	D3DXMATRIX _Inv;
-
-//	D3DXMatrixInverse(&_Inv, 0, &m_CurrentTransform);
-
-	//  All right, we apply this matrix to our ray.
-
-//	D3DXVec3TransformCoord(&_RayOrigin, &_RayOrigin, &_Inv);
-//	D3DXVec3TransformNormal(&_RayDirection, &_RayDirection, &_Inv);
-
-
-
-
-	//  Find out what square the mouse is in, we're going to highlight it.
-	//  If we didn't click on a unit, see if we clicked on the terrain.
-	D3DXMATRIX _Identity;
-	D3DXMatrixIdentity(&_Identity);
-	int i, j;
 	struct result{int x; int y; double distance;};
 	vector<result> results; 
 
-	int starti = gp_Display->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
+	int starti = gp_Scene->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
 	if(starti < 0) starti = 0;
-	int stopi = gp_Display->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
+	int stopi = gp_Scene->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
 	if(stopi > m_CellWidth - 1) stopi = m_CellWidth - 1;
 
-	int startj = gp_Display->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
+	int startj = gp_Scene->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
 	if(startj < 0) startj = 0;
-	int stopj = gp_Display->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
+	int stopj = gp_Scene->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
 	if(stopj > m_CellWidth - 1) stopj = m_CellWidth - 1;
 
 	for(int i = starti; i <= stopi; ++i)
@@ -1104,15 +1039,14 @@ void Terrain::GetTerrainHit(int &x, int &y)
 		for(int j = startj; j < stopj; ++j)
 		{
 			double distance;
-			if(gp_Display->Pick(_RayOrigin, _RayDirection, 
+			if(gp_Scene->PickTriangle(
 				D3DXVECTOR3(i    , GetValue(i    , j    ), j    ),
 				D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ),
-				D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1), _Identity, distance) ||
-				gp_Display->Pick(_RayOrigin, _RayDirection,
+				D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1), distance) ||
+				gp_Scene->PickTriangle(
 				D3DXVECTOR3(i + 1, GetValue(i + 1, j + 1), j + 1),
 				D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1),
-				D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ), _Identity, distance)
-				)
+				D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ), distance))
 			{
 				result temp = {i, j, distance};
 				results.push_back(temp);
@@ -1160,139 +1094,72 @@ void Terrain::GetTerrainHit(int &x, int &y)
 
 void Terrain::GetTerrainHitWithUV(double &x, double &y, double &u, double &v, int &whichTriangle)
 {
-//    static int resultx = 0;
-//    static int resulty = 0;
-    //  First things first; we must compute the picking ray.  We know the origin
-    //  of the picking ray; it's the current position of the camera.  We need
-    //  to turn the 2D mouse coordinates into a 3D point that will represent the
-    //  end of the ray.  Since we can get the current mouse coordinates straight
-    //  from the Input subsystem and already know our projection matrix, we
-    //  don't need any additional information to get the ray.
-
-    //  We turn our 2D coordinates into 3D coordinates by doing an inverse of
-    //  the projection transform.  The projection transform turns 3D points into
-    //  2D screen space points; we need to do the exact opposite.  We already
-    //  know our z-coordinate; the projection matrix always projects points
-    //  such that z is equal to 1.
-    float _ProjectedX;
-    float _ProjectedY;
-    float _ProjectedZ = 1.0f;
-
-    D3DXMATRIX _Proj; // The inverse 
-    gp_Display->m_D3DDevice.GetTransform(D3DTS_PROJECTION, &_Proj);
-
-    _ProjectedX = (( float( 2.0f * gp_Input->m_MouseX) / float(gp_Display->m_HRes) ) - 1.0f) / _Proj(0, 0);
-    _ProjectedY = (( float(-2.0f * gp_Input->m_MouseY) / float(gp_Display->m_VRes) ) + 1.0f) / _Proj(1, 1);
-
-    D3DXVECTOR3 _RayOrigin = D3DXVECTOR3(0, 0, 0);
-    D3DXVECTOR3 _RayDirection = D3DXVECTOR3(_ProjectedX, _ProjectedY, _ProjectedZ);
-    D3DXVec3Normalize(&_RayDirection, &_RayDirection);
-
-    //  Woohoo, we've got our ray!  But we've got a problem.  This ray is in VIEW
-    //  SPACE.  We need to get the ray into WORLD SPACE.  We do that by finding
-    //  the inverse of the view transformation and applying it to both the location
-    //  and the direction of the ray.
-
-    D3DXMATRIX _correctForCamera;
-    gp_Display->m_D3DDevice.GetTransform(D3DTS_VIEW, &_correctForCamera);
-    D3DXMatrixInverse(&_correctForCamera, 0, &_correctForCamera);
-    D3DXVec3TransformCoord(&_RayOrigin, &_RayOrigin, &_correctForCamera);
-    D3DXVec3TransformNormal(&_RayDirection, &_RayDirection, &_correctForCamera);
-
-    //  Woohoo, we've got our ray!  But we've got a problem.  This ray is in
-    //  WORLD SPACE.  The triangle we're testing against is in its own
-    //  MODEL SPACE.  One is going to have to get transformed into the other
-    //  before we can compare the two.  Now, once upon a time we would have had
-    //  to transform our model's vertices into world space by hand on every
-    //  frame, thus we would have had a handy copy of our model in world space
-    //  to use.  Since D3D does all the transformation for us, we have no handy
-    //  copy and the only geometry we have is in model space.  Thus, we will
-    //  transform the ray into the model space.  We do this by tranforming it
-    //  by the INVERSE of the model's current transformation matrix (which we
-    //  must create and store ourselves, so we do have access to it).
-
-    //	D3DXMATRIX _Inv;
-
-    //	D3DXMatrixInverse(&_Inv, 0, &m_CurrentTransform);
-
-    //  All right, we apply this matrix to our ray.
-
-    //	D3DXVec3TransformCoord(&_RayOrigin, &_RayOrigin, &_Inv);
-    //	D3DXVec3TransformNormal(&_RayDirection, &_RayDirection, &_Inv);
-
-
-
-
-    //  Find out what square the mouse is in, we're going to highlight it.
-    //  If we didn't click on a unit, see if we clicked on the terrain.
-    D3DXMATRIX _Identity;
-    D3DXMatrixIdentity(&_Identity);
-    int i, j;
     struct result{double x; double y; double distance; double u; double v; int whichTriangle; };
     vector<result> results; 
 
-    int starti = gp_Display->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
+    int starti = gp_Scene->m_Camera.m_LookAtPoint.x - m_TerrainViewRange;
     if(starti < 0) starti = 0;
-    int stopi = gp_Display->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
+    int stopi = gp_Scene->m_Camera.m_LookAtPoint.x + m_TerrainViewRange;
     if(stopi > m_CellWidth - 1) stopi = m_CellWidth - 1;
 
-    int startj = gp_Display->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
+    int startj = gp_Scene->m_Camera.m_LookAtPoint.z - m_TerrainViewRange;
     if(startj < 0) startj = 0;
-    int stopj = gp_Display->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
+    int stopj = gp_Scene->m_Camera.m_LookAtPoint.z + m_TerrainViewRange;
     if(stopj > m_CellWidth - 1) stopj = m_CellWidth - 1;
 
     for(int i = starti; i <= stopi; ++i)
     {
         for(int j = startj; j < stopj; ++j)
         {
-            double distance, u, v;
-            if(gp_Display->PickWithUV(_RayOrigin, _RayDirection, 
+            double distance = 0;
+            double triU = 0;
+            double triV = 0;
+            if(gp_Scene->PickTriangleUV(
                 D3DXVECTOR3(i    , GetValue(i    , j    ), j    ),
                 D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ),
-                D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1), _Identity, distance, u, v) )
+                D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1), distance, triU, triV))
 			{
-				result temp = {i, j, distance, u, v, 0};
+				result temp = {i, j, distance, triU, triV, 0};
                 results.push_back(temp);
 			}
-			else if(gp_Display->PickWithUV(_RayOrigin, _RayDirection,
+			else if(gp_Scene->PickTriangleUV(
                 D3DXVECTOR3(i + 1, GetValue(i + 1, j + 1), j + 1),
                 D3DXVECTOR3(i    , GetValue(i    , j + 1), j + 1),
-                D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ), _Identity, distance, u, v) )
+                D3DXVECTOR3(i + 1, GetValue(i + 1, j    ), j    ), distance, triU, triV))
             {
-				result temp = {i, j, distance, u, v, 1};
+				result temp = {i, j, distance, triU, triV, 1};
                 results.push_back(temp);
             }
         }
     }
 
-    if(results.size() == 0) //  No hit
+    if(results.size() == 0)
     {
         x = 0;
         y = 0;
         u = 0;
         v = 0;
 		whichTriangle = 0;
-
         return;
     }
 
-    //  Got our results, sort the vector and set the targetX and targetY
     double finaldistance = 99999;
-    vector<result>::iterator node = results.begin();
-    vector<result>::iterator finalResult;
-    for(node; node != results.end(); ++node)
+    const result* best = &results.front();
+    for(const result& hit : results)
     {
-        if((*node).distance < finaldistance)
+        if(hit.distance < finaldistance)
         {
-            finalResult = node;
-            finaldistance = (*node).distance;
+            best = &hit;
+            finaldistance = hit.distance;
         }
     }
 
-    _RayOrigin += ( _RayDirection * (*finalResult).distance );
-
-    x = _RayOrigin.x;
-    y = _RayOrigin.z;
+    const Ray ray = gp_Scene->GetPickRay();
+    x = ray.position.x + ray.direction.x * finaldistance;
+    y = ray.position.z + ray.direction.z * finaldistance;
+    u = best->u;
+    v = best->v;
+    whichTriangle = best->whichTriangle;
 }
 
 
@@ -1640,282 +1507,91 @@ void Terrain::FindTerrainTypes()
 
 void Terrain::DrawTerrain()
 {
-	gp_Display->m_D3DDevice.SetFVF(FVF);
+	BeginBlendMode(BLEND_ALPHA);
 
-	gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-	gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-
-	gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-	gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-	gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-	gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-
-	gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-
-	//  Simple terrain draw for debug purposes.
-//	gp_Display->m_D3DDevice.SetTexture(0, m_GrassTexture->m_Bitmap);
-//	gp_Display->m_D3DDevice.DrawPrimitive(D3DPT_TRIANGLELIST, 0, m_VertexBufferSize / 3);
-
-
-
-	for(int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
+	for (int i = 0; i < NUMBER_OF_VERTEX_BUFFERS; ++i)
 	{
-		if(m_IndexBufferSizes[i] > 0)
-		{
-			if(i == TT_WATER || i == TT_SAND || i == TT_BEACH)
-			{
-				gp_Display->m_D3DDevice.SetTexture(0, m_SandTexture->m_Bitmap);
-			}
-			else if(i == TT_RUINEDLAND || i == TT_BLESSEDLAND || i == TT_LAVA || i == TT_FARMLAND)
-			{
-				gp_Display->m_D3DDevice.SetTexture(0, m_GrassTexture->m_Bitmap);
-			}
-			else if(i == TT_GRASS)
-			{
-				gp_Display->m_D3DDevice.SetTexture(0, m_GrassTexture->m_Bitmap);
-			}
+		if (m_IndexBufferSizes[i] <= 0)
+			continue;
+		if (i == TT_HOUSE || i == TT_FARMLAND || i == TT_LAVA
+			|| i == TT_BLESSEDLAND || i == TT_RUINEDLAND || i == TT_SWAMP)
+			continue;
 
-			gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[i]);
-			gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[i] / 3);
-			m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[i] / 3;
-		}
+		Texture* texture = m_GrassTexture;
+		if (i == TT_WATER || i == TT_SAND || i == TT_BEACH)
+			texture = m_SandTexture;
+
+		DrawTerrainModel(m_TypeMeshes[i], texture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[i].triangleCount;
 	}
 
-	//  Okay, if we're going to blend grass and sand then we need to do another pass over the sand with the grass
-	//  texture.
-
-	if(m_IndexBufferSizes[TT_BEACH] > 0)
+	if (m_IndexBufferSizes[TT_BEACH] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
-
-		gp_Display->m_D3DDevice.SetTexture(0, m_GrassTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_BEACH]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_BEACH] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_BEACH] / 3;
+		DrawTerrainModel(m_TypeMeshes[TT_BEACH], m_GrassTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_BEACH].triangleCount;
 	}
 
-	if(m_IndexBufferSizes[TT_HOUSE] > 0)
+	if (m_IndexBufferSizes[TT_HOUSE] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(0, m_HouseTexture->m_Bitmap);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_HOUSE]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_HOUSE] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_HOUSE] / 3;
+		DrawTerrainModel(m_TypeMeshes[TT_HOUSE], m_HouseTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_HOUSE].triangleCount;
 	}
 
-	if(m_IndexBufferSizes[TT_FARMLAND] > 0)
+	if (m_IndexBufferSizes[TT_FARMLAND] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(0, m_FarmTexture->m_Bitmap);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_FARMLAND]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_FARMLAND] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_FARMLAND] / 3;
+		DrawTerrainModel(m_TypeMeshes[TT_FARMLAND], m_FarmTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_FARMLAND].triangleCount;
 	}
 
-
-
-
-
-	if(m_IndexBufferSizes[TT_LAVA] > 0)
+	if (m_IndexBufferSizes[TT_LAVA] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(1, m_MaskTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetTexture(0, m_LavaTexture->m_Bitmap);
-
 		int startingvalue = gp_Engine->m_GameTimeInMS % 1024;
 		startingvalue /= 16;
-		if(startingvalue > 32) startingvalue = 64 - startingvalue;
+		if (startingvalue > 32) startingvalue = 64 - startingvalue;
 		startingvalue += 192;
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_XRGB(startingvalue, startingvalue, startingvalue));
-
-
-		D3DXMATRIX matTrans;
-		D3DXMatrixIdentity(&matTrans);
-		matTrans._31 = gp_Engine->m_GameTimeInSeconds / 8;
-		matTrans._32 = gp_Engine->m_GameTimeInSeconds / 8;
-
-		// Set up the matrix for the desired transformation.
-		gp_Display->m_D3DDevice.SetTransform( D3DTS_TEXTURE0, &matTrans );
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-
-
-//		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_PASSTHRU);  //  Use the previous stage's UV coordinates
-
-
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_LAVA]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_LAVA] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_LAVA] / 3;
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
+		Color lavaTint = {static_cast<unsigned char>(startingvalue),
+			static_cast<unsigned char>(startingvalue),
+			static_cast<unsigned char>(startingvalue), 255};
+		DrawTerrainModel(m_TypeMeshes[TT_LAVA], m_LavaTexture, lavaTint);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_LAVA].triangleCount;
 	}
 
-	if(m_IndexBufferSizes[TT_BLESSEDLAND] > 0)
+	if (m_IndexBufferSizes[TT_BLESSEDLAND] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(0, m_BlessTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetTexture(1, m_MaskTexture->m_Bitmap);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-		
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_BLESSEDLAND]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_BLESSEDLAND] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_BLESSEDLAND] / 3;
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+		DrawTerrainModel(m_TypeMeshes[TT_BLESSEDLAND], m_BlessTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_BLESSEDLAND].triangleCount;
 	}
 
-	if(m_IndexBufferSizes[TT_RUINEDLAND] > 0)
+	if (m_IndexBufferSizes[TT_RUINEDLAND] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(0, m_RuinTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetTexture(1, m_MaskTexture->m_Bitmap);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_RUINEDLAND]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_RUINEDLAND] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_RUINEDLAND] / 3;
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+		DrawTerrainModel(m_TypeMeshes[TT_RUINEDLAND], m_RuinTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_RUINEDLAND].triangleCount;
 	}
 
-	if(m_IndexBufferSizes[TT_SWAMP] > 0)
+	if (m_IndexBufferSizes[TT_SWAMP] > 0)
 	{
-		gp_Display->m_D3DDevice.SetTexture(1, m_MaskTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetTexture(0, m_SwampTexture->m_Bitmap);
-
-// 		int startingvalue = gp_Engine->m_GameTimeInMS % 1024;
-// 		startingvalue /= 16;
-// 		if(startingvalue > 32) startingvalue = 64 - startingvalue;
-// 		startingvalue += 192;
-// 
-// 		gp_Display->m_D3DDevice.SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_XRGB(startingvalue, startingvalue, startingvalue));
-
-
-		D3DXMATRIX matTrans;
-		D3DXMatrixIdentity(&matTrans);
-		matTrans._31 = gp_Engine->m_GameTimeInSeconds / 8;
-		matTrans._32 = gp_Engine->m_GameTimeInSeconds / 8;
-
-		// Set up the matrix for the desired transformation.
-		gp_Display->m_D3DDevice.SetTransform( D3DTS_TEXTURE0, &matTrans );
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-
-
-		//		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_PASSTHRU);  //  Use the previous stage's UV coordinates
-
-
-
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_VertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_IndexBuffer[TT_SWAMP]);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_VertexBufferSize, 0, m_IndexBufferSizes[TT_SWAMP] / 3);
-		m_NumberOfTrisDrawnThisFrame += m_IndexBufferSizes[TT_SWAMP] / 3;
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-		gp_Display->m_D3DDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+		DrawTerrainModel(m_TypeMeshes[TT_SWAMP], m_SwampTexture);
+		m_NumberOfTrisDrawnThisFrame += m_TypeMeshes[TT_SWAMP].triangleCount;
 	}
 
-	//  Wireframe over selection, for debug purposes
-
-
-	gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, false);
+	EndBlendMode();
 }
 
 void Terrain::DrawWater()
 {
-	//  Draw the water
+	if (!m_WaterMesh.loaded || m_WaterMesh.triangleCount <= 0)
+		return;
 
-	if(m_WaterIndexBufferSize > 0)
-	{
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-		gp_Display->m_D3DDevice.SetFVF(FVF);
-		gp_Display->m_D3DDevice.SetTexture(0, m_DeepWaterTexture->m_Bitmap);
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_WaterVertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.SetIndices(m_WaterIndexBuffer);
-		gp_Display->m_D3DDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, m_WaterVertexBufferSize, 0, m_WaterIndexBufferSize / 3);
-		m_NumberOfTrisDrawnThisFrame += m_WaterIndexBufferSize / 3;
-		//gp_Display->m_D3DDevice.DrawPrimitive(D3DPT_TRIANGLELIST, 0, m_WaterVertexBufferSize / 3);
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-	}
+	BeginBlendMode(BLEND_ALPHA);
+	DrawTerrainModel(m_WaterMesh, m_DeepWaterTexture);
+	m_NumberOfTrisDrawnThisFrame += m_WaterMesh.triangleCount;
+	EndBlendMode();
 }
 
 void Terrain::UpdateMiniMap()
 {
-	if (!m_MiniMapTexture || !m_MiniMapTexture->m_Bitmap) return;
-	Image img = LoadImageFromTexture(*m_MiniMapTexture->m_Bitmap);
+	if (!m_MiniMapTexture) return;
+	Image img = LoadImageFromTexture(*m_MiniMapTexture);
 	for (int i = 0; i < m_CellWidth; ++i)
 	{
 		for (int j = 0; j < m_CellHeight; ++j)
@@ -1931,8 +1607,8 @@ void Terrain::UpdateMiniMap()
 		}
 	}
 	Texture2D updated = LoadTextureFromImage(img);
-	UnloadTexture(*m_MiniMapTexture->m_Bitmap);
-	*m_MiniMapTexture->m_Bitmap = updated;
+	UnloadTexture(*m_MiniMapTexture);
+	*m_MiniMapTexture = updated;
 	UnloadImage(img);
 }
 
@@ -1961,34 +1637,29 @@ bool Terrain::IsCellVisible(int x, int y)
 
 bool Terrain::IsPointVisible(int x, int y)
 {
-	//  Create vertex.
+	// Use the same view/projection path as the legacy camera — GetWorldToScreen()
+	// compares against the full framebuffer size, not m_HRes/m_VRes, which culled
+	// almost all cells after the BeginMode3D migration.
+	D3DXVECTOR3 originalPoint = D3DXVECTOR3(x + .5f, GetMiddle(x, y), y + .5f);
 
-	D3DXVECTOR3 originalPoint = D3DXVECTOR3(x + .5, GetMiddle(x, y), y + .5);
-
-	//  Apply camera transform to it.
-
-	D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
-	D3DXMATRIX V;
-	V = gp_Display->m_CurrentCamera;
-
+	D3DXMATRIX V = gp_Scene->m_CurrentCamera;
 	D3DXMATRIX W;
 	D3DXMatrixIdentity(&W);
 
 	D3DXMATRIX P;
-	gp_Display->m_D3DDevice.GetTransform(D3DTS_PROJECTION, &P);
+	gp_Scene->m_D3DDevice.GetTransform(D3DTS_PROJECTION, &P);
 
 	D3DVIEWPORT9 VP;
-	gp_Display->m_D3DDevice.GetViewport(&VP);
+	gp_Scene->m_D3DDevice.GetViewport(&VP);
 
 	D3DXVec3Project(&originalPoint, &originalPoint, &VP, &P, &V, &W);
 
-	if(originalPoint.x <= (gp_Display->m_HRes + (gp_Display->m_HRes * .2f))
-		&& originalPoint.x >= (0 - (gp_Display->m_HRes * .2f))
-		&& originalPoint.y <= (gp_Display->m_VRes + (gp_Display->m_VRes * .2f))
-		&& originalPoint.y >= (0 - (gp_Display->m_VRes * .2f)))
+	if(originalPoint.x <= (gp_Scene->m_HRes + (gp_Scene->m_HRes * .2f))
+		&& originalPoint.x >= (0 - (gp_Scene->m_HRes * .2f))
+		&& originalPoint.y <= (gp_Scene->m_VRes + (gp_Scene->m_VRes * .2f))
+		&& originalPoint.y >= (0 - (gp_Scene->m_VRes * .2f)))
 		return true;
-	else
-		return false;
+	return false;
 }
 
 void Terrain::ScrubTerrainCell(int i, int j)
@@ -2023,69 +1694,27 @@ bool Terrain::IsWaterCell(int i, int j)
 
 void Terrain::DrawHighlightMarker()
 {
-	if(m_ShowTerrainHit)
+	const Color hitTint = D3DColorToRaylib(m_TerrainHitColor);
+
+	if (m_ShowTerrainHit && m_HighlightMesh.loaded)
 	{
-        gp_Display->m_D3DDevice.SetRenderState( D3DRS_SLOPESCALEDEPTHBIAS, F2DW(-.001f) );
-        gp_Display->m_D3DDevice.SetRenderState( D3DRS_DEPTHBIAS, F2DW(-.001f) );
-
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-        gp_Display->m_D3DDevice.SetRenderState(D3DRS_ZENABLE, false);
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_TEXTUREFACTOR, m_TerrainHitColor);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-		gp_Display->m_D3DDevice.SetTexture(0, m_TerrainHighlightRing->m_Bitmap);
-
-		gp_Display->m_D3DDevice.SetStreamSource( 0, m_HighlightVertexBuffer, 0, sizeof(PlanitiaVertex));
-		gp_Display->m_D3DDevice.DrawPrimitive(D3DPT_TRIANGLELIST, 0, 4);
-
-		gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-        
-        gp_Display->m_D3DDevice.SetRenderState( D3DRS_SLOPESCALEDEPTHBIAS, F2DW(0.0f) );
-        gp_Display->m_D3DDevice.SetRenderState( D3DRS_DEPTHBIAS, F2DW(0.0) );
-        gp_Display->m_D3DDevice.SetRenderState(D3DRS_ZENABLE, true);
-
+		BeginBlendMode(BLEND_ALPHA);
+		rlDisableDepthTest();
+		DrawTerrainModel(m_HighlightMesh, m_TerrainHighlightRing, hitTint);
+		rlEnableDepthTest();
+		EndBlendMode();
 	}
 
-    for( int i = 0; i < 4; ++i )
-    {
-        if( g_Players[i] != NULL )
-        {
-            if( g_Players[i]->m_General != NULL )
-            {
-                if( g_Players[i]->m_General->m_Selected )
-                {
-
-                    gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-
-                    gp_Display->m_D3DDevice.SetRenderState(D3DRS_TEXTUREFACTOR, m_TerrainHitColor);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-                    gp_Display->m_D3DDevice.SetTexture(0, m_TerrainHighlightRing->m_Bitmap);
-
-                    gp_Display->m_D3DDevice.SetStreamSource( 0, m_ColoredHighlightVertexBuffer[i], 0, sizeof(PlanitiaVertex));
-                    gp_Display->m_D3DDevice.DrawPrimitive(D3DPT_TRIANGLELIST, 0, 4);
-
-                    gp_Display->m_D3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-                    gp_Display->m_D3DDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-                }
-            }
-        }
-    }
+	for (int i = 0; i < 4; ++i)
+	{
+		if (g_Players[i] != NULL && g_Players[i]->m_General != NULL && g_Players[i]->m_General->m_Selected
+			&& m_ColoredHighlightMeshes[i].loaded)
+		{
+			BeginBlendMode(BLEND_ALPHA);
+			DrawTerrainModel(m_ColoredHighlightMeshes[i], m_TerrainHighlightRing, hitTint);
+			EndBlendMode();
+		}
+	}
 }
 
 void Terrain::RuinAllLand()

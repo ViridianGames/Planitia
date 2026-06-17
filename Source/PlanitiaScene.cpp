@@ -1,16 +1,42 @@
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaGlobals.h"
 #include "PlanitiaEngineAdapter.h"
-#include "PlanitiaPrimitives.h"
-#include "Unit.h"
+#include "PlanitiaInput.h"
 #include "Geist/Engine.h"
 #include "Geist/Globals.h"
 
+#include "raymath.h"
 #include "rlgl.h"
 #include <cmath>
 
-D3DXMATRIX g_Identity;
 static bool s_In3D = false;
+
+static Vector3 ToVector3(const D3DXVECTOR3& v)
+{
+    return Vector3{ v.x, v.y, v.z };
+}
+
+static void ComputeBarycentricUV(Vector3 point, Vector3 a, Vector3 b, Vector3 c, double& u, double& v)
+{
+    Vector3 v0 = Vector3Subtract(c, a);
+    Vector3 v1 = Vector3Subtract(b, a);
+    Vector3 v2 = Vector3Subtract(point, a);
+    const float d00 = Vector3DotProduct(v0, v0);
+    const float d01 = Vector3DotProduct(v0, v1);
+    const float d11 = Vector3DotProduct(v1, v1);
+    const float d20 = Vector3DotProduct(v2, v0);
+    const float d21 = Vector3DotProduct(v2, v1);
+    const float denom = d00 * d11 - d01 * d01;
+    if (std::abs(denom) < 1e-8f)
+    {
+        u = 0;
+        v = 0;
+        return;
+    }
+    const float inv = 1.0f / denom;
+    v = (d11 * d20 - d01 * d21) * inv;
+    u = (d00 * d21 - d01 * d20) * inv;
+}
 
 PlanitiaCamera::PlanitiaCamera()
 {
@@ -54,7 +80,7 @@ void PlanitiaCamera::Update()
         m_DidCameraChangeThisFrame = true;
         D3DXVECTOR3 up = {0, 1, 0};
         D3DXMATRIX T;
-        D3DXMatrixRotationAxis(&T, &up, gp_Display->m_Camera.m_Angle);
+        D3DXMatrixRotationAxis(&T, &up, gp_Scene->m_Camera.m_Angle);
         D3DXVECTOR3 motion;
         D3DXVec3TransformCoord(&motion, &m_MovementCurrentSpeed, &T);
         m_LookAtPoint += motion * gp_Engine->m_DurationOfLastUpdateInSeconds;
@@ -80,8 +106,8 @@ void PlanitiaCamera::Update()
     D3DXVec3TransformCoord(&m_Position, &m_Position, &T);
     m_Position += m_LookAtPoint;
 
-    D3DXMatrixLookAtLH(&gp_Display->m_CurrentCamera, &m_Position, &m_LookAtPoint, &up);
-    gp_Display->m_D3DDevice.SetTransform(D3DTS_VIEW, &gp_Display->m_CurrentCamera);
+    D3DXMatrixLookAtLH(&gp_Scene->m_CurrentCamera, &m_Position, &m_LookAtPoint, &up);
+    gp_Scene->m_D3DDevice.SetTransform(D3DTS_VIEW, &gp_Scene->m_CurrentCamera);
 }
 
 void PlanitiaCamera::IncreaseCameraRotationSpeed() { m_AngleCurrentSpeed = m_AngleMaxSpeed; m_DidAngleChangeThisFrame = true; }
@@ -91,17 +117,16 @@ void PlanitiaCamera::DecreaseCameraXMovementSpeed() { m_MovementCurrentSpeed = {
 void PlanitiaCamera::IncreaseCameraZMovementSpeed() { m_MovementCurrentSpeed = {m_MovementMaxSpeed, 0, m_MovementMaxSpeed}; m_DidPositionChangeThisFrame = true; }
 void PlanitiaCamera::DecreaseCameraZMovementSpeed() { m_MovementCurrentSpeed = {-m_MovementMaxSpeed, 0, -m_MovementMaxSpeed}; m_DidPositionChangeThisFrame = true; }
 
-Display::~Display() { Shutdown(); }
-
-void Display::Init(const std::string&)
+PlanitiaScene::~PlanitiaScene()
 {
-    D3DXMatrixIdentity(&g_Identity);
+    Shutdown();
+}
 
-    // Render resolution is the actual game framebuffer (e.g. 480x270).
+void PlanitiaScene::Init(const std::string&)
+{
     m_HRes = static_cast<int>(g_Engine->m_RenderWidth);
     m_VRes = static_cast<int>(g_Engine->m_RenderHeight);
 
-    // Design resolution: legacy data files (GUI layouts, etc.) were authored at this size.
     m_DesignHRes = 1600;
     m_DesignVRes = 900;
     if (gp_Engine->m_EngineConfig.count("h_res"))
@@ -130,119 +155,125 @@ void Display::Init(const std::string&)
     m_Camera.m_ZoomMaxSpeed = gp_Engine->m_EngineConfig.count("camera_zoom_speed")
         ? gp_Engine->m_EngineConfig["camera_zoom_speed"].numdata : 0.2f;
 
+    m_FieldOfView = gp_Engine->m_EngineConfig.count("field_of_view")
+        ? gp_Engine->m_EngineConfig["field_of_view"].numdata : 30.0f;
+
+    m_Camera3D.up = Vector3{0, 1, 0};
+    m_Camera3D.fovy = m_FieldOfView;
+    m_Camera3D.projection = CAMERA_PERSPECTIVE;
+
     SetupProjection();
+    m_Camera.Update();
 }
 
-void Display::SetupProjection()
+void PlanitiaScene::SetupProjection()
 {
-    float fov = gp_Engine->m_EngineConfig.count("field_of_view")
-        ? gp_Engine->m_EngineConfig["field_of_view"].numdata : 30.0f;
     D3DXMATRIX proj;
-    D3DXMatrixPerspectiveFovLH(&proj, 3.14159265f * (fov / 180.0f),
+    D3DXMatrixPerspectiveFovLH(&proj, 3.14159265f * (m_FieldOfView / 180.0f),
         static_cast<float>(m_HRes) / static_cast<float>(m_VRes), 1.0f, 1000.0f);
     m_D3DDevice.SetTransform(D3DTS_PROJECTION, &proj);
 }
 
-void Display::Shutdown() {}
-
-void Display::Update()
+void PlanitiaScene::SyncCamera3D()
 {
-    m_Camera.Update();
+    m_Camera3D.position = ToVector3(m_Camera.m_Position);
+    m_Camera3D.target = ToVector3(m_Camera.m_LookAtPoint);
+    m_Camera3D.up = Vector3{0, 1, 0};
+    m_Camera3D.fovy = m_FieldOfView;
+    m_Camera3D.projection = CAMERA_PERSPECTIVE;
 }
 
-float Display::UIScaleX() const
+void PlanitiaScene::Shutdown() {}
+
+void PlanitiaScene::Update()
+{
+    m_Camera.Update();
+    SyncCamera3D();
+}
+
+float PlanitiaScene::UIScaleX() const
 {
     return static_cast<float>(m_HRes) / static_cast<float>(m_DesignHRes);
 }
 
-float Display::UIScaleY() const
+float PlanitiaScene::UIScaleY() const
 {
     return static_cast<float>(m_VRes) / static_cast<float>(m_DesignVRes);
 }
 
-void Display::Begin3D()
+void PlanitiaScene::Begin3D()
 {
     if (s_In3D) return;
     s_In3D = true;
 
-    float scaleX = 1.0f;
-    float scaleY = 1.0f;
-
     rlDrawRenderBatchActive();
+    SyncCamera3D();
+
+    // Planitia's camera was authored for this frustum/translate path. DrawModel()
+    // reads the current rlgl matrices, so keep this instead of BeginMode3D().
+    // Pull-back must be (-zoom,-zoom,-zoom) in rotated space, not just on Z — otherwise
+    // the eye sits at ground level and clips through the heightfield.
+    const float aspect = static_cast<float>(m_HRes) / static_cast<float>(m_VRes);
     rlMatrixMode(RL_PROJECTION);
     rlLoadIdentity();
-    float fov = gp_Engine->m_EngineConfig.count("field_of_view")
-        ? gp_Engine->m_EngineConfig["field_of_view"].numdata : 30.0f;
-    rlFrustum(-scaleX, scaleX, -scaleY, scaleY, 1.0f, 1000.0f);
+    rlFrustum(-aspect, aspect, -1.0f, 1.0f, 1.0f, 1000.0f);
 
     rlMatrixMode(RL_MODELVIEW);
     rlLoadIdentity();
 
     PlanitiaCamera& cam = m_Camera;
     rlRotatef(cam.m_Angle * 180.0f / 3.14159265f, 0, 1, 0);
-    rlTranslatef(-cam.m_LookAtPoint.x, -cam.m_LookAtPoint.y, -cam.m_LookAtPoint.z - cam.m_Zoom);
+    rlTranslatef(-cam.m_LookAtPoint.x, -cam.m_LookAtPoint.y, -cam.m_LookAtPoint.z);
+    rlTranslatef(-cam.m_Zoom, -cam.m_Zoom, -cam.m_Zoom);
+
+    rlEnableDepthTest();
+    rlEnableDepthMask();
+    rlDisableBackfaceCulling();
 }
 
-void Display::End3D()
+void PlanitiaScene::End3D()
 {
     if (!s_In3D) return;
     s_In3D = false;
     rlDrawRenderBatchActive();
+
+    // Restore 2D orthographic projection for UI/text (same as EndMode3D()).
+    rlMatrixMode(RL_PROJECTION);
+    rlLoadIdentity();
+    rlOrtho(0, m_HRes, m_VRes, 0, 0.0f, 1.0f);
+    rlMatrixMode(RL_MODELVIEW);
+    rlLoadIdentity();
+
+    rlDisableDepthTest();
 }
 
-void Display::Draw()
-{
-    FlushSprites();
-}
-
-void Display::FlushSprites()
+void PlanitiaScene::FlushSprites()
 {
     rlDrawRenderBatchActive();
     DrawSprites();
 }
 
-void Display::DrawBox(int posX, int posY, int width, int height, int r, int g, int b, int a, bool filled)
-{
-    const float scaleX = UIScaleX();
-    const float scaleY = UIScaleY();
-    Rectangle rect = {
-        static_cast<float>(posX) * scaleX,
-        static_cast<float>(posY) * scaleY,
-        static_cast<float>(width) * scaleX,
-        static_cast<float>(height) * scaleY
-    };
-    Color color = {static_cast<unsigned char>(r), static_cast<unsigned char>(g),
-        static_cast<unsigned char>(b), static_cast<unsigned char>(a)};
-    if (filled) DrawRectangleRec(rect, color);
-    else DrawRectangleLinesEx(rect, 1, color);
-}
-
-void Display::AddUnit(Unit* unit)
-{
-    m_UnitList.push_back(unit);
-}
-
-void Display::BlitImage(const Bitmap* image, int x, int y, int r, int g, int b, int a)
+void PlanitiaScene::BlitImage(const Texture* image, int x, int y, int r, int g, int b, int a)
 {
     if (!image) return;
-    m_SpriteList.push_back({image, 0, 0, image->m_Width, image->m_Height, x, y, r, g, b, a});
+    m_SpriteList.push_back({image, 0, 0, static_cast<float>(image->width), static_cast<float>(image->height), x, y, r, g, b, a});
 }
 
-void Display::BlitImageRect(const Bitmap* image, float sourceX, float sourceY, float sourceWidth, float sourceHeight,
+void PlanitiaScene::BlitImageRect(const Texture* image, float sourceX, float sourceY, float sourceWidth, float sourceHeight,
     int destX, int destY, int r, int g, int b, int a)
 {
     if (!image) return;
     m_SpriteList.push_back({image, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, r, g, b, a});
 }
 
-void Display::DrawSprites()
+void PlanitiaScene::DrawSprites()
 {
     const float scaleX = UIScaleX();
     const float scaleY = UIScaleY();
 
     for (const DisplaySprite& spr : m_SpriteList)
     {
-        if (!spr.image || !spr.image->m_Bitmap) continue;
+        if (!spr.image || spr.image->id == 0) continue;
         Rectangle src = {spr.sourceX, spr.sourceY, spr.sourceWidth, spr.sourceHeight};
         Rectangle dst = {
             static_cast<float>(spr.x) * scaleX,
@@ -252,86 +283,41 @@ void Display::DrawSprites()
         };
         Color tint = {static_cast<unsigned char>(spr.r), static_cast<unsigned char>(spr.g),
             static_cast<unsigned char>(spr.b), static_cast<unsigned char>(spr.a)};
-        DrawTexturePro(*spr.image->m_Bitmap, src, dst, {0, 0}, 0, tint);
+        DrawTexturePro(*spr.image, src, dst, {0, 0}, 0, tint);
     }
     m_SpriteList.clear();
 }
 
-namespace {
-
-#define PICK_EPSILON 0.000001
-#define PICK_CROSS(dest, v1, v2) \
-    dest[0] = v1[1] * v2[2] - v1[2] * v2[1]; \
-    dest[1] = v1[2] * v2[0] - v1[0] * v2[2]; \
-    dest[2] = v1[0] * v2[1] - v1[1] * v2[0]
-#define PICK_DOT(v1, v2) (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2])
-#define PICK_SUB(dest, v1, v2) \
-    dest[0] = v1[0] - v2[0]; \
-    dest[1] = v1[1] - v2[1]; \
-    dest[2] = v1[2] - v2[2]
-
-int IntersectTriangle(double orig[3], double dir[3],
-    double vert0[3], double vert1[3], double vert2[3],
-    double* t, double* u, double* v)
+Ray PlanitiaScene::GetPickRay() const
 {
-    double edge1[3], edge2[3], tvec[3], pvec[3], qvec[3];
-    double det, invDet;
+    if (!gp_Input)
+        return Ray{ Vector3{0, 0, 0}, Vector3{0, 0, -1} };
 
-    PICK_SUB(edge1, vert1, vert0);
-    PICK_SUB(edge2, vert2, vert0);
-    PICK_CROSS(pvec, dir, edge2);
-    det = PICK_DOT(edge1, pvec);
-
-    if (det > PICK_EPSILON)
-    {
-        PICK_SUB(tvec, orig, vert0);
-        *u = PICK_DOT(tvec, pvec);
-        if (*u < 0.0 || *u > det) return 0;
-        PICK_CROSS(qvec, tvec, edge1);
-        *v = PICK_DOT(dir, qvec);
-        if (*v < 0.0 || *u + *v > det) return 0;
-    }
-    else if (det < -PICK_EPSILON)
-    {
-        PICK_SUB(tvec, orig, vert0);
-        *u = PICK_DOT(tvec, pvec);
-        if (*u > 0.0 || *u < det) return 0;
-        PICK_CROSS(qvec, tvec, edge1);
-        *v = PICK_DOT(dir, qvec);
-        if (*v > 0.0 || *u + *v < det) return 0;
-    }
-    else return 0;
-
-    invDet = 1.0 / det;
-    *t = PICK_DOT(edge2, qvec) * invDet;
-    (*u) *= invDet;
-    (*v) *= invDet;
-    return 1;
+    const Vector2 mouse = {
+        gp_Input->m_MouseX * UIScaleX(),
+        gp_Input->m_MouseY * UIScaleY()
+    };
+    return GetMouseRay(mouse, m_Camera3D);
 }
 
-} // namespace
-
-bool Display::Pick(D3DXVECTOR3 rayOrigin, D3DXVECTOR3 rayDirection,
-    D3DXVECTOR3 tri1, D3DXVECTOR3 tri2, D3DXVECTOR3 tri3,
-    D3DXMATRIX, double& distance)
+bool PlanitiaScene::PickTriangle(const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXVECTOR3& v3, double& distance) const
 {
-    double orig[3] = {rayOrigin.x, rayOrigin.y, rayOrigin.z};
-    double dir[3] = {rayDirection.x, rayDirection.y, rayDirection.z};
-    double vert0[3] = {tri1.x, tri1.y, tri1.z};
-    double vert1[3] = {tri2.x, tri2.y, tri2.z};
-    double vert2[3] = {tri3.x, tri3.y, tri3.z};
-    double u, v;
-    return IntersectTriangle(orig, dir, vert0, vert1, vert2, &distance, &u, &v) != 0;
+    const Ray ray = GetPickRay();
+    const RayCollision hit = GetRayCollisionTriangle(ray, ToVector3(v1), ToVector3(v2), ToVector3(v3));
+    if (!hit.hit)
+        return false;
+    distance = hit.distance;
+    return true;
 }
 
-bool Display::PickWithUV(D3DXVECTOR3 rayOrigin, D3DXVECTOR3 rayDirection,
-    D3DXVECTOR3 tri1, D3DXVECTOR3 tri2, D3DXVECTOR3 tri3,
-    D3DXMATRIX, double& distance, double& u, double& v)
+bool PlanitiaScene::PickTriangleUV(const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXVECTOR3& v3,
+    double& distance, double& u, double& v) const
 {
-    double orig[3] = {rayOrigin.x, rayOrigin.y, rayOrigin.z};
-    double dir[3] = {rayDirection.x, rayDirection.y, rayDirection.z};
-    double vert0[3] = {tri1.x, tri1.y, tri1.z};
-    double vert1[3] = {tri2.x, tri2.y, tri2.z};
-    double vert2[3] = {tri3.x, tri3.y, tri3.z};
-    return IntersectTriangle(orig, dir, vert0, vert1, vert2, &distance, &u, &v) != 0;
+    const Ray ray = GetPickRay();
+    const RayCollision hit = GetRayCollisionTriangle(ray, ToVector3(v1), ToVector3(v2), ToVector3(v3));
+    if (!hit.hit)
+        return false;
+    distance = hit.distance;
+    ComputeBarycentricUV(hit.point, ToVector3(v1), ToVector3(v2), ToVector3(v3), u, v);
+    return true;
 }

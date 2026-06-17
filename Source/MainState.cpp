@@ -1,6 +1,6 @@
 #include "MainState.h"
 #include "PlanitiaGlobals.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaEngineAdapter.h"
 #include "Geist/RNG.h"
 #include "Geist/Engine.h"
@@ -23,7 +23,7 @@ void MainState::Update()
     if (IsKeyPressed(KEY_ESCAPE))
     {
         g_Engine->m_Done = true;
-        gp_Engine->m_Done = true;
+        if (gp_Engine) gp_Engine->m_Done = true;
     }
 }
 
@@ -46,7 +46,7 @@ void MainState::LoadLevelGeometry(const std::string& levelFileName)
     g_Terrain = new Terrain();
     g_Terrain->Init(levelFileName);
 
-    gp_Display->m_Camera.m_LookAtPointMax = {
+    gp_Scene->m_Camera.m_LookAtPointMax = {
         static_cast<float>(g_Terrain->m_VertexWidth), 0.0f,
         static_cast<float>(g_Terrain->m_VertexHeight)};
 }

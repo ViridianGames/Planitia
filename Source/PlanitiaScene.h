@@ -1,17 +1,11 @@
-#ifndef PLANITIA_DISPLAY_H
-#define PLANITIA_DISPLAY_H
+#ifndef PLANITIA_SCENE_H
+#define PLANITIA_SCENE_H
 
-#include "PlanitiaObject.h"
 #include "PlanitiaD3DDevice.h"
-#include "PlanitiaConfig.h"
-#include <map>
+#include "PlanitiaTypes.h"
+#include "raylib.h"
 #include <string>
 #include <vector>
-
-class Unit;
-class Bitmap;
-
-extern D3DXMATRIX g_Identity;
 
 class PlanitiaCamera
 {
@@ -49,46 +43,42 @@ public:
 
 struct DisplaySprite
 {
-    const Bitmap* image;
+    const Texture* image;
     float sourceX, sourceY, sourceWidth, sourceHeight;
     int x, y;
     int r, g, b, a;
 };
 
-class Display : public PlanitiaObject
+class PlanitiaScene
 {
 public:
-    Display() = default;
-    ~Display() override;
+    PlanitiaScene() = default;
+    ~PlanitiaScene();
 
-    void Init(const std::string& configfile) override;
-    void Shutdown() override;
-    void Update() override;
-    void Draw() override;
+    void Init(const std::string& configfile);
+    void Shutdown();
+    void Update();
+    void FlushSprites();
 
-    void BlitImage(const Bitmap* image, int x, int y, int r = 255, int g = 255, int b = 255, int a = 255);
-    void BlitImageRect(const Bitmap* image, float sourceX, float sourceY, float sourceWidth, float sourceHeight,
+    void BlitImage(const Texture* image, int x, int y, int r = 255, int g = 255, int b = 255, int a = 255);
+    void BlitImageRect(const Texture* image, float sourceX, float sourceY, float sourceWidth, float sourceHeight,
         int destX, int destY, int r = 255, int g = 255, int b = 255, int a = 255);
-    void DrawBox(int posX, int posY, int width, int height, int r, int g, int b, int a, bool filled);
-    void AddUnit(Unit* unit);
 
     void Begin3D();
     void End3D();
-    void FlushSprites();
 
     float UIScaleX() const;
     float UIScaleY() const;
 
-    bool Pick(D3DXVECTOR3 rayOrigin, D3DXVECTOR3 rayDirection,
-        D3DXVECTOR3 tri1, D3DXVECTOR3 tri2, D3DXVECTOR3 tri3,
-        D3DXMATRIX triTransform, double& distance);
-    bool PickWithUV(D3DXVECTOR3 rayOrigin, D3DXVECTOR3 rayDirection,
-        D3DXVECTOR3 tri1, D3DXVECTOR3 tri2, D3DXVECTOR3 tri3,
-        D3DXMATRIX triTransform, double& distance, double& u, double& v);
+    Ray GetPickRay() const;
+    bool PickTriangle(const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXVECTOR3& v3, double& distance) const;
+    bool PickTriangleUV(const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXVECTOR3& v3,
+        double& distance, double& u, double& v) const;
 
     PlanitiaD3DDevice m_D3DDevice;
     PlanitiaCamera m_Camera;
-    D3DXMATRIX m_CurrentCamera;
+    Camera3D m_Camera3D{};
+    D3DXMATRIX m_CurrentCamera{};
 
     int m_HRes = 480;
     int m_VRes = 270;
@@ -98,12 +88,14 @@ public:
     int m_WindowVRes = 900;
     bool m_HardwareVertexProcessingSupported = true;
     bool m_FastTerrain = false;
+    float m_FieldOfView = 30.0f;
 
 private:
-    std::vector<Unit*> m_UnitList;
-    std::vector<DisplaySprite> m_SpriteList;
-    void DrawSprites();
     void SetupProjection();
+    void SyncCamera3D();
+    void DrawSprites();
+
+    std::vector<DisplaySprite> m_SpriteList;
 };
 
 #endif

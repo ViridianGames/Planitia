@@ -3,20 +3,19 @@
 #ifndef _UNIT_H_
 #define _UNIT_H_
 
-#include "PlanitiaObject.h"
-#include "PlanitiaConfig.h"
+#include "Geist/Object.h"
+#include "Geist/Config.h"
 
-#include <map>
 #include <string>
 
-class Unit : public PlanitiaObject
+class Unit : public Object
 {
 public:
    Unit() = default;
    virtual ~Unit();
 
    virtual void Init(const std::string& configfile) override;
-   virtual void Shutdown() override;
+   virtual void Shutdown();
    virtual void Update() override;
    virtual void Draw() override;
 
@@ -24,7 +23,7 @@ public:
 
    bool m_IsDead;
 
-   std::map<std::string, PlanitiaConfigInfo> m_UnitConfig;
+   Config m_UnitConfig;
 };
 
 #endif

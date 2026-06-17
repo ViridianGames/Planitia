@@ -1,6 +1,6 @@
 #include "LoadingState.h"
 #include "PlanitiaGlobals.h"
-#include "PlanitiaDisplay.h"
+#include "PlanitiaScene.h"
 #include "PlanitiaFonts.h"
 #include "Geist/StateMachine.h"
 #include "Geist/Globals.h"
@@ -28,6 +28,6 @@ void LoadingState::Draw()
 {
     const std::string message = "Planitia is loading.  One moment, please...";
     PlanitiaDrawTextCentered(g_PlanitiaFont, PLANITIA_FONT_SIZE, message,
-        gp_Display->m_DesignHRes * 0.5f, 288.0f, WHITE);
-    gp_Display->FlushSprites();
+        gp_Scene->m_DesignHRes * 0.5f, 288.0f, WHITE);
+    gp_Scene->FlushSprites();
 }

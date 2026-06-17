@@ -1,10 +1,17 @@
- Wed Jun 17 05:23:27 2026.539 Starting Engine::Init()
- Wed Jun 17 05:23:27 2026.539 Starting StateMachine::Init
- Wed Jun 17 05:23:27 2026.539 Leaving StateMachine::Init
- Wed Jun 17 05:23:27 2026.539 Starting InputSystem::Init()
- Wed Jun 17 05:23:27 2026.539 Done With InputSystem::Init()
- Wed Jun 17 05:23:27 2026.723 Done with Engine::Init()
- Wed Jun 17 05:23:27 2026.724 Created state TitleState with ID 0
- Wed Jun 17 05:23:27 2026.724 Created state MainState with ID 1
- Wed Jun 17 05:23:27 2026.724 Created state OptionsState with ID 2
- Wed Jun 17 05:23:27 2026.724 StateMachine: Transitioning to state TitleState, ID 0
+ Wed Jun 17 06:57:49 2026.560 Starting Engine::Init()
+ Wed Jun 17 06:57:49 2026.560 Starting StateMachine::Init
+ Wed Jun 17 06:57:49 2026.560 Leaving StateMachine::Init
+ Wed Jun 17 06:57:49 2026.560 Starting InputSystem::Init()
+ Wed Jun 17 06:57:49 2026.560 Done With InputSystem::Init()
+ Wed Jun 17 06:57:49 2026.799 Done with Engine::Init()
+ Wed Jun 17 06:57:49 2026.844 Created state MainState with ID 1
+ Wed Jun 17 06:57:49 2026.844 Created state PauseState with ID 2
+ Wed Jun 17 06:57:54 2026.349 Created state MainMenuState with ID 3
+ Wed Jun 17 06:57:54 2026.349 Created state SetUpMultiplayerState with ID 4
+ Wed Jun 17 06:57:54 2026.349 Created state SetUpStoryState with ID 5
+ Wed Jun 17 06:57:54 2026.349 Created state SetUpSkirmishState with ID 6
+ Wed Jun 17 06:57:54 2026.349 Created state OptionsState with ID 7
+ Wed Jun 17 06:57:54 2026.349 Created state LoadingState with ID 8
+ Wed Jun 17 06:57:54 2026.349 Created state SetUpTutorialState with ID 9
+ Wed Jun 17 06:57:54 2026.349 StateMachine: Transitioning to state LoadingState, ID 8
+ Wed Jun 17 06:57:54 2026.367 StateMachine: Transitioning to state MainMenuState, ID 3

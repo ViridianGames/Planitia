@@ -168,15 +168,30 @@ set(SOURCES
         Source/Geist/StateMachine.cpp
         Source/Geist/TooltipSystem.cpp
 
-        Source/GameGlobals.cpp
         Source/Main.cpp
+
+        Source/LoadingState.cpp
+        Source/MainMenuState.cpp
         Source/MainState.cpp
-        Source/OptionsState.cpp
-        Source/TitleState.cpp
+        Source/PlanitiaConfig.cpp
+        Source/PlanitiaD3DDevice.cpp
+        Source/PlanitiaDisplay.cpp
+        Source/PlanitiaEngineAdapter.cpp
+        Source/PlanitiaFonts.cpp
+        Source/PlanitiaFramework.cpp
+        Source/PlanitiaGlobals.cpp
+        Source/PlanitiaGui.cpp
+        Source/PlanitiaInput.cpp
+        Source/PlanitiaPrimitives.cpp
+        Source/PlanitiaResourceManager.cpp
+        Source/StubState.cpp
+        Source/Terrain.cpp
+        Source/Unit.cpp
 )
 
 # Organize files into virtual folders in Visual Studio
 source_group("Geist" REGULAR_EXPRESSION "Source/Geist/.*")
+source_group("Planitia" REGULAR_EXPRESSION "Source/Planitia.*")
 source_group("Source Files" REGULAR_EXPRESSION "Source/[^/]+\\.cpp")
 
 # ============================================================================
@@ -191,6 +206,7 @@ add_executable(Planitia WIN32
 target_compile_definitions(Planitia PRIVATE
         $<$<CONFIG:Debug>:DEBUG_MODE>
         $<$<CONFIG:Release>:RELEASE_MODE>
+        PLANITIA_GAME
 )
 
 # Link dependencies

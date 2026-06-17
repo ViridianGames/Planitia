@@ -6,6 +6,7 @@
 #include <Geist/SoundSystem.h>
 #include <Geist/InputSystem.h>
 #include <Geist/Logging.h>
+#include <PlanitiaFramework.h>
 #include <sstream>
 #include <fstream>
 #include <chrono>
@@ -138,6 +139,7 @@ void Engine::Draw()
 		ClearBackground(BLACK);
 		g_ResourceManager->Draw();
 		g_StateMachine->Draw();
+		PlanitiaFramework::DrawPost();
 		g_ScriptingSystem->Draw();
 		g_InputSystem->Draw();
 		EndTextureMode();
@@ -156,6 +158,7 @@ void Engine::Draw()
 		ClearBackground(BLACK);
 		g_ResourceManager->Draw();
 		g_StateMachine->Draw();
+		PlanitiaFramework::DrawPost();
 		g_ScriptingSystem->Draw();
 		g_InputSystem->Draw();
 		EndDrawing();

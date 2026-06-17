@@ -10,97 +10,81 @@
 #include "Geist/Globals.h"
 #include "Geist/Engine.h"
 #include "Geist/StateMachine.h"
-#include "raylib.h"
-#include <string>
-#include <memory>
-#include <filesystem>
+#include "PlanitiaFramework.h"
+#include "PlanitiaGlobals.h"
+#include "PlanitiaEngineAdapter.h"
 
-#include "llimits.h"
-#include "GameGlobals.h"
+#include "LoadingState.h"
+#include "MainMenuState.h"
+#include "MainState.h"
+#include "StubState.h"
+
+#include "raylib.h"
+#include <memory>
 
 #include "rlgl.h"
 
 #define RLGL_IMPLEMENTATION
 #define RLGL_SOFT_RENDER
 
-#ifdef _WIN32
-// Forward declare Windows types and functions we need
-typedef void* HWND;
-typedef void* HICON;
-typedef void* HMODULE;
-typedef void* HINSTANCE;
-#ifdef _WIN64
-typedef long long LONG_PTR;
-#else
-typedef long LONG_PTR;
-#endif
-typedef LONG_PTR LRESULT;
-typedef LONG_PTR LPARAM;
-typedef unsigned int UINT;
-
-#define MAKEINTRESOURCE(i) ((char*)((unsigned long long)((unsigned short)(i))))
-#define WM_SETICON 0x0080
-#define ICON_SMALL 0
-#define ICON_BIG 1
-#define IMAGE_ICON 1
-#define LR_DEFAULTSIZE 0x0040
-#define LR_SHARED 0x8000
-
-extern "C" {
-	__declspec(dllimport) HWND __stdcall GetActiveWindow(void);
-	__declspec(dllimport) HICON __stdcall LoadIconA(HINSTANCE hInstance, const char* lpIconName);
-	__declspec(dllimport) HMODULE __stdcall GetModuleHandleA(const char* lpModuleName);
-	__declspec(dllimport) LRESULT __stdcall SendMessageA(HWND hWnd, UINT Msg, LPARAM wParam, LPARAM lParam);
-}
-
-#define LoadIcon LoadIconA
-#define GetModuleHandle GetModuleHandleA
-#define SendMessage SendMessageA
-#endif
-
-
-using namespace std;
-using namespace std::filesystem;
-
-int main(int argv, char** argc)
+int main(int, char**)
 {
-   // Create global engine instance
-   g_Engine = std::make_unique<Engine>();
+    g_Engine = std::make_unique<Engine>();
+    g_Engine->Init("engine.cfg");
+    g_Engine->m_useVirtualResolution = true;
 
-   // Initialize with configuration file
-   g_Engine->Init("engine.cfg");
-	g_Engine->m_useVirtualResolution = true;
+    PlanitiaFramework::Init("Data/engine.cfg");
 
-	// Create global objects
-	g_drawScale = g_Engine->m_ScreenHeight / g_Engine->m_RenderHeight;
+    auto* mainState = new MainState();
+    mainState->Init("Data/engine.cfg");
+    g_StateMachine->RegisterState(STATE_MAINSTATE, mainState, "MainState");
 
-	g_font = make_shared<Font>(LoadFontEx("Fonts/softsquare.ttf", 9, NULL, 0));
-	g_smallFont = make_shared<Font>(LoadFontEx("Fonts/littleleague.ttf", 7, NULL, 0));
+    auto* pauseState = CreateStubState();
+    pauseState->Init("");
+    g_StateMachine->RegisterState(STATE_PAUSESTATE, pauseState, "PauseState");
 
-   // Create and register our example state
-   TitleState* titleState = new TitleState();
-   titleState->Init("");
-   g_StateMachine->RegisterState(STATE_TITLESTATE, titleState, "TitleState");
+    auto* mainMenuState = new MainMenuState();
+    mainMenuState->Init("Data/engine.cfg");
+    g_StateMachine->RegisterState(STATE_MAINMENUSTATE, mainMenuState, "MainMenuState");
 
-	MainState* mainState = new MainState();
-	mainState->Init("");
-	g_StateMachine->RegisterState(STATE_MAINSTATE, mainState, "MainState");
+    auto* setUpMultiplayerState = CreateStubState();
+    setUpMultiplayerState->Init("");
+    g_StateMachine->RegisterState(STATE_SETUPMULTIPLAYERSTATE, setUpMultiplayerState, "SetUpMultiplayerState");
 
-	OptionsState* optionsState = new OptionsState();
-	optionsState->Init("");
-	g_StateMachine->RegisterState(STATE_OPTIONSSTATE, optionsState, "OptionsState");
+    auto* setUpStoryState = CreateStubState();
+    setUpStoryState->Init("");
+    g_StateMachine->RegisterState(STATE_SETUPSTORYSTATE, setUpStoryState, "SetUpStoryState");
 
-   g_StateMachine->MakeStateTransition(STATE_TITLESTATE);
+    auto* setUpSkirmishState = CreateStubState();
+    setUpSkirmishState->Init("");
+    g_StateMachine->RegisterState(STATE_SETUPSKIRMISHSTATE, setUpSkirmishState, "SetUpSkirmishState");
 
-   // Main game loop
-   while (!g_Engine->m_Done && !WindowShouldClose())
-   {
-      g_Engine->Update();
-      g_Engine->Draw();
-   }
+    auto* optionsState = CreateStubState();
+    optionsState->Init("");
+    g_StateMachine->RegisterState(STATE_OPTIONSSTATE, optionsState, "OptionsState");
 
-   // Cleanup
-   g_Engine->Shutdown();
+    auto* loadingState = new LoadingState();
+    loadingState->Init("Data/engine.cfg");
+    g_StateMachine->RegisterState(STATE_LOADINGSTATE, loadingState, "LoadingState");
 
-   return 0;
+    auto* setUpTutorialState = CreateStubState();
+    setUpTutorialState->Init("");
+    g_StateMachine->RegisterState(STATE_SETUPTUTORIALSTATE, setUpTutorialState, "SetUpTutorialState");
+
+    g_StateMachine->MakeStateTransition(STATE_LOADINGSTATE);
+
+    while (!g_Engine->m_Done && !WindowShouldClose())
+    {
+        if (gp_Engine && gp_Engine->m_Done)
+            g_Engine->m_Done = true;
+
+        PlanitiaFramework::Update();
+        g_Engine->Update();
+        g_Engine->Draw();
+    }
+
+    PlanitiaFramework::Shutdown();
+    g_Engine->Shutdown();
+
+    return 0;
 }

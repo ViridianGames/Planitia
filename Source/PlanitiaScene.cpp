@@ -2,8 +2,8 @@
 #include "PlanitiaGlobals.h"
 #include "PlanitiaEngineAdapter.h"
 #include "PlanitiaInput.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 
 #include "raymath.h"
 #include "rlgl.h"

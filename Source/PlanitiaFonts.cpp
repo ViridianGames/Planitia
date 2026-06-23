@@ -1,8 +1,8 @@
 #include "PlanitiaFonts.h"
 #include "PlanitiaGlobals.h"
 #include "PlanitiaScene.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 
 #include "rlgl.h"
 

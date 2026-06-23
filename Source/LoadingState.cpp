@@ -2,8 +2,8 @@
 #include "PlanitiaGlobals.h"
 #include "PlanitiaScene.h"
 #include "PlanitiaFonts.h"
-#include "Geist/StateMachine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/StateMachine.h"
+#include "../Geist/Source/Globals.h"
 
 LoadingState::~LoadingState()
 {

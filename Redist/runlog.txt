@@ -1,81 +1,81 @@
- Wed Jun 17 10:11:35 2026.522 Starting Engine::Init()
- Wed Jun 17 10:11:35 2026.522 Starting StateMachine::Init
- Wed Jun 17 10:11:35 2026.522 Leaving StateMachine::Init
- Wed Jun 17 10:11:35 2026.522 Starting InputSystem::Init()
- Wed Jun 17 10:11:35 2026.522 Done With InputSystem::Init()
- Wed Jun 17 10:11:35 2026.685 Done with Engine::Init()
- Wed Jun 17 10:11:35 2026.686 Loading texture Images/clouds.png on the fly!
- Wed Jun 17 10:11:35 2026.686 Loading texture Images/clouds.png
- Wed Jun 17 10:11:35 2026.696 Texture ID: 6, Width: 1024, Height: 512
- Wed Jun 17 10:11:35 2026.696 Load successful.
- Wed Jun 17 10:11:35 2026.697 Loading texture Images//Terrain//water_shallow.png on the fly!
- Wed Jun 17 10:11:35 2026.697 Loading texture Images//Terrain//water_shallow.png
- Wed Jun 17 10:11:35 2026.697 Texture ID: 7, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.697 Load successful.
- Wed Jun 17 10:11:35 2026.697 Loading texture Images//Terrain//water_deep.png on the fly!
- Wed Jun 17 10:11:35 2026.697 Loading texture Images//Terrain//water_deep.png
- Wed Jun 17 10:11:35 2026.698 Texture ID: 8, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.698 Load successful.
- Wed Jun 17 10:11:35 2026.698 Loading texture Images//Terrain//sand.png on the fly!
- Wed Jun 17 10:11:35 2026.698 Loading texture Images//Terrain//sand.png
- Wed Jun 17 10:11:35 2026.698 Texture ID: 9, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.698 Load successful.
- Wed Jun 17 10:11:35 2026.698 Loading texture Images//Terrain//grass.png on the fly!
- Wed Jun 17 10:11:35 2026.698 Loading texture Images//Terrain//grass.png
- Wed Jun 17 10:11:35 2026.699 Texture ID: 10, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.699 Load successful.
- Wed Jun 17 10:11:35 2026.699 Loading texture Images//Terrain//ruin.png on the fly!
- Wed Jun 17 10:11:35 2026.699 Loading texture Images//Terrain//ruin.png
- Wed Jun 17 10:11:35 2026.700 Texture ID: 11, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.700 Load successful.
- Wed Jun 17 10:11:35 2026.700 Loading texture Images//Terrain//mask.png on the fly!
- Wed Jun 17 10:11:35 2026.700 Loading texture Images//Terrain//mask.png
- Wed Jun 17 10:11:35 2026.709 Texture ID: 12, Width: 4096, Height: 256
- Wed Jun 17 10:11:35 2026.709 Load successful.
- Wed Jun 17 10:11:35 2026.709 Loading texture Images//Terrain//bless.png on the fly!
- Wed Jun 17 10:11:35 2026.709 Loading texture Images//Terrain//bless.png
- Wed Jun 17 10:11:35 2026.709 Texture ID: 13, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.709 Load successful.
- Wed Jun 17 10:11:35 2026.709 Loading texture Images//Terrain//lava.png on the fly!
- Wed Jun 17 10:11:35 2026.709 Loading texture Images//Terrain//lava.png
- Wed Jun 17 10:11:35 2026.710 Texture ID: 14, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.710 Load successful.
- Wed Jun 17 10:11:35 2026.710 Loading texture Images//Terrain//farm.png on the fly!
- Wed Jun 17 10:11:35 2026.710 Loading texture Images//Terrain//farm.png
- Wed Jun 17 10:11:35 2026.711 Texture ID: 15, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.711 Load successful.
- Wed Jun 17 10:11:35 2026.711 Loading texture Images//Terrain//villagesmall.png on the fly!
- Wed Jun 17 10:11:35 2026.711 Loading texture Images//Terrain//villagesmall.png
- Wed Jun 17 10:11:35 2026.712 Texture ID: 16, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.712 Load successful.
- Wed Jun 17 10:11:35 2026.712 Loading texture Images//Terrain//swampterrain.png on the fly!
- Wed Jun 17 10:11:35 2026.712 Loading texture Images//Terrain//swampterrain.png
- Wed Jun 17 10:11:35 2026.713 Texture ID: 17, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.713 Load successful.
- Wed Jun 17 10:11:35 2026.713 Loading texture Images/TerrainHighlightRing.png on the fly!
- Wed Jun 17 10:11:35 2026.713 Loading texture Images/TerrainHighlightRing.png
- Wed Jun 17 10:11:35 2026.714 Texture ID: 18, Width: 256, Height: 256
- Wed Jun 17 10:11:35 2026.714 Load successful.
- Wed Jun 17 10:11:35 2026.715 Created state MainState with ID 1
- Wed Jun 17 10:11:35 2026.715 Created state PauseState with ID 2
- Wed Jun 17 10:11:35 2026.715 Loading texture Images/GUI/PlanitiaLogo.png on the fly!
- Wed Jun 17 10:11:35 2026.715 Loading texture Images/GUI/PlanitiaLogo.png
- Wed Jun 17 10:11:35 2026.722 Texture ID: 19, Width: 1024, Height: 512
- Wed Jun 17 10:11:35 2026.722 Load successful.
- Wed Jun 17 10:11:35 2026.722 Loading texture Images/GUI/ButtonBackground.png on the fly!
- Wed Jun 17 10:11:35 2026.722 Loading texture Images/GUI/ButtonBackground.png
- Wed Jun 17 10:11:35 2026.722 Texture ID: 21, Width: 256, Height: 64
- Wed Jun 17 10:11:35 2026.722 Load successful.
- Wed Jun 17 10:11:35 2026.722 Loading texture Images/cursor.png on the fly!
- Wed Jun 17 10:11:35 2026.722 Loading texture Images/cursor.png
- Wed Jun 17 10:11:35 2026.722 Texture ID: 22, Width: 16, Height: 32
- Wed Jun 17 10:11:35 2026.722 Load successful.
- Wed Jun 17 10:11:35 2026.722 Created state MainMenuState with ID 3
- Wed Jun 17 10:11:35 2026.722 Created state SetUpMultiplayerState with ID 4
- Wed Jun 17 10:11:35 2026.722 Created state SetUpStoryState with ID 5
- Wed Jun 17 10:11:35 2026.722 Created state SetUpSkirmishState with ID 6
- Wed Jun 17 10:11:35 2026.722 Created state OptionsState with ID 7
- Wed Jun 17 10:11:35 2026.722 Created state LoadingState with ID 8
- Wed Jun 17 10:11:35 2026.722 Created state SetUpTutorialState with ID 9
- Wed Jun 17 10:11:35 2026.722 StateMachine: Transitioning to state LoadingState, ID 8
- Wed Jun 17 10:11:35 2026.726 StateMachine: Transitioning to state MainMenuState, ID 3
+ Tue Jun 23 14:12:33 2026.839 Starting Engine::Init()
+ Tue Jun 23 14:12:33 2026.839 Starting StateMachine::Init
+ Tue Jun 23 14:12:33 2026.839 Leaving StateMachine::Init
+ Tue Jun 23 14:12:33 2026.839 Starting InputSystem::Init()
+ Tue Jun 23 14:12:33 2026.839 Done With InputSystem::Init()
+ Tue Jun 23 14:12:34 2026.015 Done with Engine::Init()
+ Tue Jun 23 14:12:34 2026.016 Loading texture Images/clouds.png on the fly!
+ Tue Jun 23 14:12:34 2026.016 Loading texture Images/clouds.png
+ Tue Jun 23 14:12:34 2026.028 Texture ID: 6, Width: 1024, Height: 512
+ Tue Jun 23 14:12:34 2026.028 Load successful.
+ Tue Jun 23 14:12:34 2026.029 Loading texture Images//Terrain//water_shallow.png on the fly!
+ Tue Jun 23 14:12:34 2026.029 Loading texture Images//Terrain//water_shallow.png
+ Tue Jun 23 14:12:34 2026.029 Texture ID: 7, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.029 Load successful.
+ Tue Jun 23 14:12:34 2026.029 Loading texture Images//Terrain//water_deep.png on the fly!
+ Tue Jun 23 14:12:34 2026.029 Loading texture Images//Terrain//water_deep.png
+ Tue Jun 23 14:12:34 2026.031 Texture ID: 8, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.031 Load successful.
+ Tue Jun 23 14:12:34 2026.031 Loading texture Images//Terrain//sand.png on the fly!
+ Tue Jun 23 14:12:34 2026.031 Loading texture Images//Terrain//sand.png
+ Tue Jun 23 14:12:34 2026.031 Texture ID: 9, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.031 Load successful.
+ Tue Jun 23 14:12:34 2026.031 Loading texture Images//Terrain//grass.png on the fly!
+ Tue Jun 23 14:12:34 2026.031 Loading texture Images//Terrain//grass.png
+ Tue Jun 23 14:12:34 2026.032 Texture ID: 10, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.032 Load successful.
+ Tue Jun 23 14:12:34 2026.032 Loading texture Images//Terrain//ruin.png on the fly!
+ Tue Jun 23 14:12:34 2026.032 Loading texture Images//Terrain//ruin.png
+ Tue Jun 23 14:12:34 2026.033 Texture ID: 11, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.033 Load successful.
+ Tue Jun 23 14:12:34 2026.033 Loading texture Images//Terrain//mask.png on the fly!
+ Tue Jun 23 14:12:34 2026.033 Loading texture Images//Terrain//mask.png
+ Tue Jun 23 14:12:34 2026.041 Texture ID: 12, Width: 4096, Height: 256
+ Tue Jun 23 14:12:34 2026.041 Load successful.
+ Tue Jun 23 14:12:34 2026.041 Loading texture Images//Terrain//bless.png on the fly!
+ Tue Jun 23 14:12:34 2026.041 Loading texture Images//Terrain//bless.png
+ Tue Jun 23 14:12:34 2026.042 Texture ID: 13, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.042 Load successful.
+ Tue Jun 23 14:12:34 2026.042 Loading texture Images//Terrain//lava.png on the fly!
+ Tue Jun 23 14:12:34 2026.042 Loading texture Images//Terrain//lava.png
+ Tue Jun 23 14:12:34 2026.042 Texture ID: 14, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.042 Load successful.
+ Tue Jun 23 14:12:34 2026.042 Loading texture Images//Terrain//farm.png on the fly!
+ Tue Jun 23 14:12:34 2026.042 Loading texture Images//Terrain//farm.png
+ Tue Jun 23 14:12:34 2026.043 Texture ID: 15, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.043 Load successful.
+ Tue Jun 23 14:12:34 2026.043 Loading texture Images//Terrain//villagesmall.png on the fly!
+ Tue Jun 23 14:12:34 2026.043 Loading texture Images//Terrain//villagesmall.png
+ Tue Jun 23 14:12:34 2026.044 Texture ID: 16, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.044 Load successful.
+ Tue Jun 23 14:12:34 2026.044 Loading texture Images//Terrain//swampterrain.png on the fly!
+ Tue Jun 23 14:12:34 2026.044 Loading texture Images//Terrain//swampterrain.png
+ Tue Jun 23 14:12:34 2026.045 Texture ID: 17, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.045 Load successful.
+ Tue Jun 23 14:12:34 2026.045 Loading texture Images/TerrainHighlightRing.png on the fly!
+ Tue Jun 23 14:12:34 2026.045 Loading texture Images/TerrainHighlightRing.png
+ Tue Jun 23 14:12:34 2026.046 Texture ID: 18, Width: 256, Height: 256
+ Tue Jun 23 14:12:34 2026.046 Load successful.
+ Tue Jun 23 14:12:34 2026.047 Created state MainState with ID 1
+ Tue Jun 23 14:12:34 2026.047 Created state PauseState with ID 2
+ Tue Jun 23 14:12:34 2026.047 Loading texture Images/GUI/PlanitiaLogo.png on the fly!
+ Tue Jun 23 14:12:34 2026.047 Loading texture Images/GUI/PlanitiaLogo.png
+ Tue Jun 23 14:12:34 2026.054 Texture ID: 19, Width: 1024, Height: 512
+ Tue Jun 23 14:12:34 2026.054 Load successful.
+ Tue Jun 23 14:12:34 2026.054 Loading texture Images/GUI/ButtonBackground.png on the fly!
+ Tue Jun 23 14:12:34 2026.054 Loading texture Images/GUI/ButtonBackground.png
+ Tue Jun 23 14:12:34 2026.054 Texture ID: 21, Width: 256, Height: 64
+ Tue Jun 23 14:12:34 2026.054 Load successful.
+ Tue Jun 23 14:12:34 2026.054 Loading texture Images/cursor.png on the fly!
+ Tue Jun 23 14:12:34 2026.054 Loading texture Images/cursor.png
+ Tue Jun 23 14:12:34 2026.054 Texture ID: 22, Width: 16, Height: 32
+ Tue Jun 23 14:12:34 2026.054 Load successful.
+ Tue Jun 23 14:12:34 2026.054 Created state MainMenuState with ID 3
+ Tue Jun 23 14:12:34 2026.054 Created state SetUpMultiplayerState with ID 4
+ Tue Jun 23 14:12:34 2026.054 Created state SetUpStoryState with ID 5
+ Tue Jun 23 14:12:34 2026.054 Created state SetUpSkirmishState with ID 6
+ Tue Jun 23 14:12:34 2026.054 Created state OptionsState with ID 7
+ Tue Jun 23 14:12:34 2026.054 Created state LoadingState with ID 8
+ Tue Jun 23 14:12:34 2026.054 Created state SetUpTutorialState with ID 9
+ Tue Jun 23 14:12:34 2026.054 StateMachine: Transitioning to state LoadingState, ID 8
+ Tue Jun 23 14:12:34 2026.063 StateMachine: Transitioning to state MainMenuState, ID 3

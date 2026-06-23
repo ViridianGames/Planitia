@@ -1,5 +1,5 @@
 #include "PlanitiaConfig.h"
-#include "Geist/Logging.h"
+#include "../Geist/Source/Logging.h"
 
 #include <fstream>
 #include <sstream>

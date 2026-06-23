@@ -7,9 +7,9 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "Geist/Globals.h"
-#include "Geist/Engine.h"
-#include "Geist/StateMachine.h"
+#include "../Geist/Source/Globals.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/StateMachine.h"
 #include "PlanitiaFramework.h"
 #include "PlanitiaGlobals.h"
 #include "PlanitiaEngineAdapter.h"

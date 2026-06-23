@@ -3,8 +3,8 @@
 #ifndef _UNIT_H_
 #define _UNIT_H_
 
-#include "Geist/Object.h"
-#include "Geist/Config.h"
+#include "../Geist/Source/Object.h"
+#include "../Geist/Source/Config.h"
 
 #include <string>
 

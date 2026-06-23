@@ -1,7 +1,7 @@
 #ifndef PLANITIA_MAIN_STATE_H
 #define PLANITIA_MAIN_STATE_H
 
-#include "Geist/State.h"
+#include "../Geist/Source/State.h"
 #include "Terrain.h"
 #include <vector>
 

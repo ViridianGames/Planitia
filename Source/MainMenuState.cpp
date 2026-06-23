@@ -1,16 +1,17 @@
 #include "MainMenuState.h"
 #include "PlanitiaGlobals.h"
 #include "PlanitiaScene.h"
-#include "Geist/Config.h"
-#include "Geist/ResourceManager.h"
+#include "../Geist/Source/Config.h"
+#include "../Geist/Source/ResourceManager.h"
 #include "PlanitiaTypes.h"
 #include "PlanitiaInput.h"
 #include "PlanitiaEngineAdapter.h"
 #include "PlanitiaFonts.h"
 #include "Terrain.h"
-#include "Geist/StateMachine.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/StateMachine.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
+#include "PlanitiaGuiLegacy.h"
 
 enum MainMenuStates
 {
@@ -53,7 +54,7 @@ MainMenuState::~MainMenuState()
 void MainMenuState::Init(const std::string&)
 {
     m_FrontEnd.m_Font = std::make_shared<Font>(g_PlanitiaFont);
-    m_FrontEnd.LoadLegacyFile("Data/GUIs/MainMenu.txt");
+    LoadGuiLegacyFile(m_FrontEnd, "Data/GUIs/MainMenu.txt");
 
     const int guiWidth = 800;
     const int guiHeight = 660;

@@ -272,7 +272,7 @@ inline Color ModulateColors(Color tex, Color vert)
     };
 }
 
-#include "Geist/Primitives.h"
+#include "../Geist/Source/Primitives.h"
 
 inline Vertex MakeTerrainVertex(float x, float y, float z, DWORD color, float u, float v, float u2 = 0, float v2 = 0)
 {

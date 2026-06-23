@@ -1,6 +1,6 @@
 #include "PlanitiaEngineAdapter.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 
 void PlanitiaEngineAdapter::Init(const std::string& configfile)
 {

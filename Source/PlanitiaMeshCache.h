@@ -2,7 +2,7 @@
 #define PLANITIA_MESH_CACHE_H
 
 #include "PlanitiaD3DDevice.h"
-#include "Geist/Primitives.h"
+#include "../Geist/Source/Primitives.h"
 #include <string>
 #include <vector>
 

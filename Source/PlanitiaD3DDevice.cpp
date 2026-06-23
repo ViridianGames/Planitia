@@ -1,8 +1,8 @@
 #include "PlanitiaD3DDevice.h"
 #include "PlanitiaScene.h"
 #include "PlanitiaGlobals.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 
 #include "rlgl.h"
 #include <cstring>

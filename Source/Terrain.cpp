@@ -1,9 +1,9 @@
 #include "PlanitiaGlobals.h"
 #include "PlanitiaScene.h"
 
-#include "Geist/Config.h"
-#include "Geist/Globals.h"
-#include "Geist/ResourceManager.h"
+#include "../Geist/Source/Config.h"
+#include "../Geist/Source/Globals.h"
+#include "../Geist/Source/ResourceManager.h"
 #include "PlanitiaMeshCache.h"
 #include "PlanitiaTypes.h"
 #include "PlanitiaInput.h"

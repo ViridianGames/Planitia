@@ -2,9 +2,9 @@
 #include "PlanitiaGlobals.h"
 #include "PlanitiaScene.h"
 #include "PlanitiaEngineAdapter.h"
-#include "Geist/RNG.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/RNG.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 
 MainState::~MainState()
 {

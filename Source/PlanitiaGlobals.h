@@ -2,7 +2,7 @@
 #define PLANITIA_GLOBALS_H
 
 #include "PlanitiaTypes.h"
-#include "Geist/RNG.h"
+#include "../Geist/Source/RNG.h"
 #include <cmath>
 #include <string>
 #include <vector>

@@ -1,8 +1,8 @@
 #ifndef PLANITIA_MAIN_MENU_STATE_H
 #define PLANITIA_MAIN_MENU_STATE_H
 
-#include "Geist/State.h"
-#include "Geist/Gui.h"
+#include "../Geist/Source/State.h"
+#include "../Geist/Source/Gui.h"
 
 
 class MainMenuState : public State

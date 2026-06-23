@@ -2,7 +2,7 @@
 #define PLANITIA_D3D_DEVICE_H
 
 #include "PlanitiaTypes.h"
-#include "Geist/Primitives.h"
+#include "../Geist/Source/Primitives.h"
 #include <vector>
 
 class PlanitiaVertexBuffer

@@ -1,6 +1,6 @@
-#include "Geist/State.h"
-#include "Geist/Engine.h"
-#include "Geist/Globals.h"
+#include "../Geist/Source/State.h"
+#include "../Geist/Source/Engine.h"
+#include "../Geist/Source/Globals.h"
 #include "PlanitiaEngineAdapter.h"
 #include "PlanitiaGlobals.h"
 

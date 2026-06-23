@@ -1,7 +1,7 @@
 #ifndef PLANITIA_LOADING_STATE_H
 #define PLANITIA_LOADING_STATE_H
 
-#include "Geist/State.h"
+#include "../Geist/Source/State.h"
 
 class LoadingState : public State
 {

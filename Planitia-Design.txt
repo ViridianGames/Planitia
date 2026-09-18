@@ -1,0 +1,192 @@
+--------------------------------------------------------------------------------
+GOD POWERS
+--------------------------------------------------------------------------------
+
+GREEN
+
+Flatten Land  - TERRAIN ALTERER - raises the land under the cursor to a certain
+                height so that it can be settled.  Got icon.
+
+Bless Land    - TERRAIN ALTERER - Fixes ruined/lavad/swamped land and also
+                allows faster food gathering (and thus village growth) for a
+                short amount of time.  Got icon.
+
+Oakskin       - UNIT BUFF - For 30 seconds, all units within range of the spell
+                take 25% less damage.  Need icon.
+
+Healing Light - BUFFER - Friendly units within range of the click get a HOT buff
+                for X ticks.  Got icon.
+
+
+RED
+
+Flamering     - UNIT ADDER - Creates a ring of fire that burns any unit inside
+                it.  Need icon.
+
+Stone Rain    - TERRAIN ALTERER - Ruins terrain within a range around the click.
+                Doesn't unflatten  Got icon.
+
+Flamestrike   - UNIT ADDER - Adds a unit that wanders around for a few seconds,
+                doing damage to buildings and units nearby.  Got icon.
+
+Volcano       - UNIT ADDER - Volcanoes ruin the terrain, damage any units nearby
+                and destroy any village buildings in range.  Got icon.
+
+
+YELLOW
+
+Celerity      - BUFFER - For 15 seconds, all friendly units move and attack 25%
+                faster.
+
+Cleanse       - BUFFER - Removes debuffs from all friendly units in the circle
+                and buffs from any enemy units.  Can counter Celerity,
+                Hypnotize, Bloodrage, Plague and Oakskin.  Need icon.
+
+Bloodlust     - BUFFER - For 30 seconds, units do 25% more damage.  Need icon.
+
+
+Earthquake    - UNIT ADDER- The unit ruins and unflattens land, slowing down an
+                enemy village.  Throws units around for a few seconds but
+                doesn't do them much damage.  Got icon.
+
+
+BLUE
+
+Lightning     - UNIT ADDER - A single lightning strike that will hit any unit
+                close by.  A direct hit will kill a single unit.  Nearby units
+                take damage and are flung.  Got icon.
+
+Tornado       - UNIT ADDER - Tornadoes randomly wander around for about 30
+                seconds, wrecking buildings and throwing
+                nearby units into the air.  Need icon.
+
+Hypnotize     - UNIT BUFF - About half the villagers or soldiers in range of the
+                spell turn to the Blue side for 10 - 30 seconds.  Can only work
+                if casting god has less than 100 units total.  Need icon.
+
+Meteor        - UNIT ADDER - A meteor drops from the sky, damaging units and
+                throwing them around.  Uses physics, so after it hits the ground it can roll around.  Can slow down an army or a village.
+                Takes a moment to fall so you have to cast ahead of an incoming
+                army.  Got icon.
+
+PURPLE
+
+Swamp         - TERRAIN ALTERER - Turns terrain into swamp.  Any unit on a swamp
+                gets a 1-tick debuff that slows it; thus, once the unit leaves
+                the swamp the debuff goes away.  Got icon.
+
+
+Plague        - BUFFER - All enemy units within a circle take damage over time
+                and are greatly slowed.
+
+Hero          - UNIT ADDER - Creates a huge enemy creature with lots of
+                hitpoints.  Must be cast near one of your villagers. Acts on its
+                own to find and kill enemies.  It's basically the Knight from
+                Populous.  Hmmm...sacrificing your villagers to make it stronger
+                might be interesting.  Cannot be affected by Bloodlust or
+                Oakskin, but CAN be Healed or Hypnotized.  Got icon.
+
+Armageddon    - UNIT ADDER - Removes all walkers and adds an equal number of
+                random military units, which are no longer under the player's control.  They seek out and kill each other.  First god to lose all their followers loses..  Got icon.
+
+
+UNITS The player can create:
+
+Walker - The basic unit of Planitia.  You start with a handful.  They make and store food and generate the mana for god powers.  When food storage gets big enough, they build new houses so more walkers can spawn.  They can flatten land if necessary so the player doesn't HAVE to cast "Flatten" but they are slower than the spell.  All other units are converted Walkers, so building an army reduces your mana recharge.
+
+Archer - Basic ranged unit.  Can fire arrows at enemy.  Arrows are units that fly using physics and do good damage to anyone they hit.  Archers don't have a lot of hitpoints so they can easily be killed in melee.
+
+Swordsman - Basic melee unit.  Have good hitpoints and do good melee damage, but are slow.
+
+Barbarian - Basic skirmisher unit.  Lower hitpoints than swordsmen but much faster.  Dangerous to archers.
+
+Other units:
+
+Sheep/Birds/Trees - Non-interactive, created randomly.  Just stuff to make the world feel more alive.
+
+Hero (as the god power above)
+
+Probably more later.
+
+
+
+
+
+
+
+
+
+
+
+Combos:
+
+Bloodlust + Oakskin - Cast these on your villagers just as an enemy army arrives
+to give them a nasty surprise.  Or on your army as the battle starts to make it
+a curb stomp.  Just watch out for Cleanse, which can remove both of these
+effects.
+
+Hypnotize + Bloodlust - Convert half an enemy army and then buff them so they
+can kill the other half.
+
+Plague + Flamering - Pin an enemy army or Shade of Ending inside a flamering
+long enough for it to kill them.
+
+Earthquake + Flamering - With Earthquake ruining the land and stunlocking
+villagers in place and Flamering setting them on fire, this is a real
+village-killer.
+
+Celerity + Bless Land- Gets villages going REALLY fast, even if you don't have
+Flatten.
+
+Plague + Meteor - Plague slows down an army making it easier to hit it with a
+meteor.
+
+Celerity + Bless Land- Gets villages going REALLY fast, even if you don't have
+Flatten.
+
+Hero + Celerity - By default the Shade moves fairly slowly. Cast Celerity on it
+to get it to its target faster and have it do more damage.
+
+Hypnotize + Hero - The Hero must be created near one of your villagers.
+Hypnotize enemy villagers and you can create the Hero right in their village!
+
+--------------------------------------------------------------------------------
+SINGLE PLAYER
+--------------------------------------------------------------------------------
+
+VILLAGES
+--------
+
+*  Village growth.  A village will start with three walkers, one house and one
+   field (this is not a unit, it's a special terrain type).  Walkers will walk
+   to nearby fields and gather food.  Once the player has enough food in his
+   bank, a new walker is created.  This walker will be tagged to a house -
+   unless all houses already have five walkers.  If so, this walker will find
+   a square of flat land nearby (at least one square from any existing house)
+   and build a new house, which it will then attach itself to.  It will then
+   start gathering food from a nearby field - unless all are full, in which case
+   it will create a field nearby (adjacent to ether an existing field or house)
+   and start gathering from that.  Shacks can be randomly rotated, but houses
+   manors will line up.
+
+*  If walkers cannot find a nearby piece of flat land that is not farm/house
+   then they will create a piece of flat land by raising/lowering a nearby cell
+   of land.  This will take a while, but it does mean that you don't NEED
+   Flatten in order for your village to grow quickly; an ability like Celerity
+   will also make this go faster, possibly for less mana.  We might be able to
+   get away with using "attacking" as the means for flattening land; celerity
+   already improves attack speed which would mean that if we use the same speed
+   for flattening it'll affect both.
+
+*  Houses can grow into larger/more effective versions.  Houses hold 3 (small
+   shack), 4 (looking something like our current house) and 5 people (much
+   bigger house, maybe goes outside the bounds of the cell a little).  The more
+   people inside a house, the more mana it generates (that is, five people in
+   the same house will generate more mana than five people in five different
+   houses).
+
+NETWORKING
+----------
+
+Pretty simple.  One player is the server, up to 3 others can join.  The game goes until only one player has Walkers left.
+

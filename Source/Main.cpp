@@ -7,84 +7,121 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "../Geist/Source/Globals.h"
-#include "../Geist/Source/Engine.h"
-#include "../Geist/Source/StateMachine.h"
-#include "PlanitiaFramework.h"
-#include "PlanitiaGlobals.h"
-#include "PlanitiaEngineAdapter.h"
-
-#include "LoadingState.h"
-#include "MainMenuState.h"
-#include "MainState.h"
-#include "StubState.h"
-
+#include "Geist/Globals.h"
+#include "Geist/Engine.h"
+#include "Geist/Logging.h"
+#include "Geist/ResourceManager.h"
+#include "Geist/StateMachine.h"
 #include "raylib.h"
+#include <string>
 #include <memory>
+#include <filesystem>
+#ifdef _WIN32
+#include <process.h>
+#define planitia_getpid _getpid
+#else
+#include <unistd.h>
+#define planitia_getpid getpid
+#endif
+
+#include "llimits.h"
+#include "GameGlobals.h"
 
 #include "rlgl.h"
 
 #define RLGL_IMPLEMENTATION
 #define RLGL_SOFT_RENDER
 
-int main(int, char**)
+#ifdef _WIN32
+// Forward declare Windows types and functions we need
+typedef void* HWND;
+typedef void* HICON;
+typedef void* HMODULE;
+typedef void* HINSTANCE;
+#ifdef _WIN64
+typedef long long LONG_PTR;
+#else
+typedef long LONG_PTR;
+#endif
+typedef LONG_PTR LRESULT;
+typedef LONG_PTR LPARAM;
+typedef unsigned int UINT;
+
+#define MAKEINTRESOURCE(i) ((char*)((unsigned long long)((unsigned short)(i))))
+#define WM_SETICON 0x0080
+#define ICON_SMALL 0
+#define ICON_BIG 1
+#define IMAGE_ICON 1
+#define LR_DEFAULTSIZE 0x0040
+#define LR_SHARED 0x8000
+
+extern "C" {
+	__declspec(dllimport) HWND __stdcall GetActiveWindow(void);
+	__declspec(dllimport) HICON __stdcall LoadIconA(HINSTANCE hInstance, const char* lpIconName);
+	__declspec(dllimport) HMODULE __stdcall GetModuleHandleA(const char* lpModuleName);
+	__declspec(dllimport) LRESULT __stdcall SendMessageA(HWND hWnd, UINT Msg, LPARAM wParam, LPARAM lParam);
+}
+
+#define LoadIcon LoadIconA
+#define GetModuleHandle GetModuleHandleA
+#define SendMessage SendMessageA
+#endif
+
+
+using namespace std;
+using namespace std::filesystem;
+
+int main(int argv, char** argc)
 {
-    g_Engine = std::make_unique<Engine>();
-    g_Engine->Init("engine.cfg");
-    g_Engine->m_useVirtualResolution = true;
+	// Separate logs per process so two local instances don't stomp Redist/runlog.txt.
+	const int pid = static_cast<int>(planitia_getpid());
+	SetLogFileName("runlog_" + std::to_string(pid) + ".txt");
+	Log("Planitia starting (pid " + std::to_string(pid) + ")");
 
-    PlanitiaFramework::Init("Data/engine.cfg");
+   // Create global engine instance
+   g_Engine = std::make_unique<Engine>();
 
-    auto* mainState = new MainState();
-    mainState->Init("Data/engine.cfg");
-    g_StateMachine->RegisterState(STATE_MAINSTATE, mainState, "MainState");
+   // Initialize with configuration file
+   g_Engine->Init("engine.cfg");
+	g_Engine->m_useVirtualResolution = true;
 
-    auto* pauseState = CreateStubState();
-    pauseState->Init("");
-    g_StateMachine->RegisterState(STATE_PAUSESTATE, pauseState, "PauseState");
+	// Create global objects
+	g_drawScale = g_Engine->m_ScreenHeight / g_Engine->m_RenderHeight;
 
-    auto* mainMenuState = new MainMenuState();
-    mainMenuState->Init("Data/engine.cfg");
-    g_StateMachine->RegisterState(STATE_MAINMENUSTATE, mainMenuState, "MainMenuState");
+	// Pixel fonts - always bake at draw size and draw at baseSize (see LoadPixelFont).
+	g_font = make_shared<Font>(LoadPixelFont("Fonts/softsquare.ttf", 9));
+	g_smallFont = make_shared<Font>(LoadPixelFont("Fonts/babyblocks.ttf", 8));
 
-    auto* setUpMultiplayerState = CreateStubState();
-    setUpMultiplayerState->Init("");
-    g_StateMachine->RegisterState(STATE_SETUPMULTIPLAYERSTATE, setUpMultiplayerState, "SetUpMultiplayerState");
+	// Custom mouse cursor is loaded by Engine from engine.cfg (mouse_cursor).
 
-    auto* setUpStoryState = CreateStubState();
-    setUpStoryState->Init("");
-    g_StateMachine->RegisterState(STATE_SETUPSTORYSTATE, setUpStoryState, "SetUpStoryState");
+   // Create and register our example state
+   TitleState* titleState = new TitleState();
+   titleState->Init("");
+   g_StateMachine->RegisterState(STATE_TITLESTATE, titleState, "TitleState");
 
-    auto* setUpSkirmishState = CreateStubState();
-    setUpSkirmishState->Init("");
-    g_StateMachine->RegisterState(STATE_SETUPSKIRMISHSTATE, setUpSkirmishState, "SetUpSkirmishState");
+	MainState* mainState = new MainState();
+	mainState->Init("");
+	g_StateMachine->RegisterState(STATE_MAINSTATE, mainState, "MainState");
 
-    auto* optionsState = CreateStubState();
-    optionsState->Init("");
-    g_StateMachine->RegisterState(STATE_OPTIONSSTATE, optionsState, "OptionsState");
+	OptionsState* optionsState = new OptionsState();
+	optionsState->Init("");
+	g_StateMachine->RegisterState(STATE_OPTIONSSTATE, optionsState, "OptionsState");
 
-    auto* loadingState = new LoadingState();
-    loadingState->Init("Data/engine.cfg");
-    g_StateMachine->RegisterState(STATE_LOADINGSTATE, loadingState, "LoadingState");
+	MultiplayerMenuState* multiState = new MultiplayerMenuState();
+	multiState->Init("");
+	g_StateMachine->RegisterState(STATE_MULTIPLAYERMENUSTATE, multiState, "MultiplayerMenuState");
 
-    auto* setUpTutorialState = CreateStubState();
-    setUpTutorialState->Init("");
-    g_StateMachine->RegisterState(STATE_SETUPTUTORIALSTATE, setUpTutorialState, "SetUpTutorialState");
+   g_StateMachine->MakeStateTransition(STATE_TITLESTATE);
 
-    g_StateMachine->MakeStateTransition(STATE_LOADINGSTATE);
+   // Main game loop
+   while (!g_Engine->m_Done && !WindowShouldClose())
+   {
+      g_Engine->Update();
+      g_Engine->Draw();
+   }
 
-    while (!g_Engine->m_Done && !WindowShouldClose())
-    {
-        if (gp_Engine && gp_Engine->m_Done)
-            g_Engine->m_Done = true;
+   // Cleanup
+   g_Engine->Shutdown();
 
-        PlanitiaFramework::Update();
-        g_Engine->Update();
-        g_Engine->Draw();
-    }
-
-    PlanitiaFramework::Shutdown();
-    g_Engine->Shutdown();
-
-    return 0;
+   return 0;
 }

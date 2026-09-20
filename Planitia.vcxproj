@@ -246,6 +246,7 @@
   <ItemGroup>
     <ClCompile Include="Source\GameGlobals.cpp" />
     <ClCompile Include="Source\GameSim.cpp" />
+    <ClCompile Include="Source\LanAddress.cpp" />
     <ClCompile Include="Source\Lockstep.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\MainHud.cpp" />
@@ -335,6 +336,7 @@
     <ClInclude Include="Source\GameGlobals.h" />
     <ClInclude Include="Source\GameSim.h" />
     <ClInclude Include="Source\GameTypes.h" />
+    <ClInclude Include="Source\LanAddress.h" />
     <ClInclude Include="Source\Lockstep.h" />
     <ClInclude Include="Source\MainHud.h" />
     <ClInclude Include="Source\MainState.h" />

@@ -238,6 +238,18 @@ void NetSession::SendToPeer(int peerIndex, const std::vector<uint8_t>& bytes, bo
 	enet_host_flush(m_Host);
 }
 
+void NetSession::DisconnectPeer(int peerIndex)
+{
+	if (!m_Host || peerIndex < 0 || static_cast<size_t>(peerIndex) >= m_Host->peerCount)
+		return;
+	ENetPeer* peer = &m_Host->peers[peerIndex];
+	if (peer->state == ENET_PEER_STATE_DISCONNECTED)
+		return;
+	enet_peer_disconnect_now(peer, 0);
+	enet_host_flush(m_Host);
+	Log("NetSession: force-disconnected peerIndex=" + std::to_string(peerIndex));
+}
+
 void NetSession::SendToHost(const std::vector<uint8_t>& bytes, bool reliable)
 {
 	if (m_Mode != Mode::Client || !m_ServerPeer || bytes.empty())

@@ -19,8 +19,18 @@
 namespace Net
 {
 	constexpr uint32_t kMagic = 0x504C4E54u; // 'PLNT'
-	constexpr uint16_t kProtocolVersion = 3;
+
+	// Multiplayer compatibility version. Host and every client must match
+	// before a seat is granted. Bump when the wire format or lockstep rules
+	// change incompatibly.
+	constexpr uint16_t kGameVersion = 4;
+	constexpr uint16_t kProtocolVersion = kGameVersion; // Hello/Welcome field
 	constexpr uint8_t kChannelReliable = 0;
+
+	inline std::string VersionLabel()
+	{
+		return "v" + std::to_string(kGameVersion);
+	}
 
 	enum class PacketType : uint8_t
 	{
@@ -31,6 +41,7 @@ namespace Net
 		TurnChecksum = 5,
 		Chat = 6,        // reserved
 		TurnBundle = 7,  // host -> all: full command set for a turn (advance together)
+		VersionReject = 8, // host -> client: Hello version mismatch (then disconnect)
 	};
 
 	// 0xFF = no-op for this turn (still required so the barrier can advance).
@@ -135,6 +146,17 @@ namespace Net
 		AppendU16(b, w.port);
 		AppendU16(b, w.turnLength);
 		AppendU8(b, w.assignedColor);
+		return b;
+	}
+
+	// theirVersion = what the peer sent; hostVersion = what we require.
+	inline std::vector<uint8_t> PackVersionReject(uint16_t theirVersion, uint16_t hostVersion = kGameVersion)
+	{
+		std::vector<uint8_t> b;
+		AppendU32(b, kMagic);
+		AppendU8(b, static_cast<uint8_t>(PacketType::VersionReject));
+		AppendU16(b, theirVersion);
+		AppendU16(b, hostVersion);
 		return b;
 	}
 

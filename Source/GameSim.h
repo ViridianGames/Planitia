@@ -47,6 +47,9 @@ public:
 	bool TryCreateMilitary(UnitType type, int playerSlot);
 	bool TryMoveGeneral(int playerSlot, int cellX, int cellZ);
 
+	// HUD / UI: enough mana, not on spell cooldown, player still active.
+	bool CanAfford(const Player& player, PlayerAction action) const;
+
 private:
 	void UpdateUnit(Unit& unit, float tickDt);
 	void UpdateWalker(Unit& unit, float tickDt);
@@ -60,7 +63,6 @@ private:
 	void CheckEliminations();
 	void RecountPopulation();
 	float GroundY(float x, float z) const;
-	bool CanAfford(const Player& player, PlayerAction action) const;
 	bool ChargeMana(Player& player, PlayerAction action);
 	void DamageEnemiesInRadius(int casterTeam, float x, float z, float radius, float damage);
 	void HealFriendliesInRadius(int team, float x, float z, float radius, float amount);

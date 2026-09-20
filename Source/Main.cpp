@@ -85,6 +85,23 @@ int main(int argv, char** argc)
    g_Engine->Init("engine.cfg");
 	g_Engine->m_useVirtualResolution = true;
 
+	// Alpha cutout for billboard sprites (same as U7Revisited).
+	{
+		const std::string shaderPath =
+			std::string(GetApplicationDirectory()) + "Data/Shaders/alphaDiscard.fs";
+		g_alphaDiscard = LoadShader(NULL, shaderPath.c_str());
+		if (g_alphaDiscard.id == 0)
+			g_alphaDiscard = LoadShader(NULL, "Data/Shaders/alphaDiscard.fs");
+		g_alphaDiscardCutoffLoc = GetShaderLocation(g_alphaDiscard, "alphaCutoff");
+		float defaultCutoff = 0.5f;
+		if (g_alphaDiscard.id != 0 && g_alphaDiscardCutoffLoc >= 0)
+			SetShaderValue(g_alphaDiscard, g_alphaDiscardCutoffLoc, &defaultCutoff, SHADER_UNIFORM_FLOAT);
+		if (g_alphaDiscard.id == 0)
+			Log("WARNING: Failed to load Data/Shaders/alphaDiscard.fs");
+		else
+			Log("Loaded alphaDiscard shader");
+	}
+
 	// Create global objects
 	g_drawScale = g_Engine->m_ScreenHeight / g_Engine->m_RenderHeight;
 
@@ -121,6 +138,12 @@ int main(int argv, char** argc)
    }
 
    // Cleanup
+	if (g_alphaDiscard.id != 0)
+	{
+		UnloadShader(g_alphaDiscard);
+		g_alphaDiscard = {};
+		g_alphaDiscardCutoffLoc = -1;
+	}
    g_Engine->Shutdown();
 
    return 0;

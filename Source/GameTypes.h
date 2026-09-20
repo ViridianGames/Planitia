@@ -84,13 +84,13 @@ inline const char* PlayerActionName(PlayerAction action)
 	switch (action)
 	{
 	case PlayerAction::Flatten: return "Flatten";
-	case PlayerAction::Bless: return "Bless";
+	case PlayerAction::Bless: return "Bless Land";
 	case PlayerAction::StoneRain: return "Stone Rain";
 	case PlayerAction::Swamp: return "Swamp";
 	case PlayerAction::Lightning: return "Lightning";
 	case PlayerAction::Flamestrike: return "Flamestrike";
 	case PlayerAction::Earthquake: return "Earthquake";
-	case PlayerAction::HealingLight: return "Heal Light";
+	case PlayerAction::HealingLight: return "Healing Rain";
 	case PlayerAction::CreateArcher: return "Archer";
 	case PlayerAction::CreateBarbarian: return "Barbarian";
 	case PlayerAction::CreateWarrior: return "Swordsman";

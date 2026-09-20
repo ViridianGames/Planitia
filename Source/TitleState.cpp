@@ -4,6 +4,7 @@
 #include "Geist/StateMachine.h"
 
 #include "GameGlobals.h"
+#include "NetProtocol.h"
 
 using namespace std;
 
@@ -60,6 +61,8 @@ void TitleState::Draw()
 	if (g_smallFont)
 	{
 		const float fs = static_cast<float>(g_smallFont->baseSize);
+		DrawOutlinedText(g_smallFont, Net::VersionLabel().c_str(), { 8.0f, y }, fs, 1, Color{ 160, 200, 160, 255 });
+		y += fs + 4.0f;
 		DrawOutlinedText(g_smallFont, "Space/Enter/N - local skirmish", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
 		y += fs + 3.0f;
 		DrawOutlinedText(g_smallFont, "M - multiplayer lobby", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });

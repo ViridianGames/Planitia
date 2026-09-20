@@ -86,16 +86,16 @@ void DrawToolTip(Font* font, float size, std::vector<ColoredString> strings, int
 	}
 	break;
 
-	case 2: // Lower-right
+	case 2: // Lower-right (x,y = bottom-right corner of the tip)
 	{
 		int posy = y - yheight - 1;
 
-		DrawRectangle(x - xwidth - 1, y - 1, xwidth + 2, yheight + 1, Color{ 0, 0, 0, 192 });
+		DrawRectangle(x - xwidth - 1, y - yheight - 1, xwidth + 2, yheight + 1, Color{ 0, 0, 0, 192 });
 
 		for (vector<ColoredString>::iterator node = strings.begin(); node != strings.end(); ++node)
 		{
 			DrawTextEx(*font, (*node).m_String.c_str(), Vector2{ (float)x + 3 - xwidth, (float)posy }, size, 1, (*node).m_Color);
-			posy += size * 1.2;
+			posy += size * 1.2f;
 		}
 
 		float linex = x - xwidth - 1;

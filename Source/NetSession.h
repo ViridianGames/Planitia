@@ -48,6 +48,8 @@ public:
 	void Broadcast(const std::vector<uint8_t>& bytes, bool reliable = true);
 	void SendToPeer(int peerIndex, const std::vector<uint8_t>& bytes, bool reliable = true);
 	void SendToHost(const std::vector<uint8_t>& bytes, bool reliable = true);
+	// Drop one peer immediately (host: reject bad Hello; after VersionReject send).
+	void DisconnectPeer(int peerIndex);
 
 	Mode GetMode() const { return m_Mode; }
 	bool IsOnline() const { return m_Mode != Mode::Offline && m_Host != nullptr; }

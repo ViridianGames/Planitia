@@ -36,7 +36,7 @@ struct Unit
 	UnitState m_NextState = UnitState::Idle; // state to enter when Move arrives
 	bool m_CarryFood = false;
 	float m_AnimTimer = 0.0f;
-	int m_Facing = 0; // 0..3 for sprite dir later
+	int m_Facing = 7; // 0=SW,1=W,2=NW,3=N,4=NE,5=E,6=SE,7=S (U7 walk slots)
 
 	// Village-only fields (ignored for other types).
 	int m_FoodBucket = 0;

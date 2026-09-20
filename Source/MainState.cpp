@@ -6,6 +6,7 @@
 #include "GameGlobals.h"
 #include "GameSim.h"
 #include "Terrain.h"
+#include "WalkerSprites.h"
 #include "Geist/Engine.h"
 
 #include "raymath.h"
@@ -26,6 +27,7 @@ void MainState::Shutdown()
 	m_Hud.Shutdown();
 	g_Sim.Reset();
 	g_Terrain.reset();
+	WalkerSprites::Unload();
 }
 
 void MainState::FocusCameraOnLocalTown()
@@ -57,6 +59,7 @@ void MainState::FocusCameraOnLocalTown()
 void MainState::OnEnter()
 {
 	m_DrawCursor = true;
+	WalkerSprites::EnsureLoaded();
 
 	// Multiplayer lobby already started the match - don't wipe the session.
 	if (!g_Lockstep.MatchRunning())
@@ -106,6 +109,19 @@ void MainState::Update()
 		g_showPerfCounter = !g_showPerfCounter;
 
 	m_Hud.Update();
+
+	// Minimap click jumps the camera look-at to that map position.
+	{
+		float jumpX = 0.0f;
+		float jumpZ = 0.0f;
+		if (m_Hud.ConsumeMinimapCameraJump(jumpX, jumpZ) && g_Terrain)
+		{
+			m_LookAt.x = jumpX;
+			m_LookAt.z = jumpZ;
+			const float ground = g_Terrain->GetHeight(m_LookAt.x, m_LookAt.z);
+			m_LookAt.y = (ground > 0.0f) ? ground : 0.0f;
+		}
+	}
 
 	// World click -> lockstep command (not immediate Try*).
 	if (g_Terrain && !m_Hud.IsMouseOver() && g_Lockstep.MatchRunning() && !g_Lockstep.IsDesynced())

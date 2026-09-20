@@ -38,6 +38,9 @@ public:
 	PlayerAction GetSelectedUnitAction() const;
 	UnitType GetSelectedUnitType() const;
 
+	// Minimap click -> camera jump. True once per click; fills world XZ.
+	bool ConsumeMinimapCameraJump(float& outWorldX, float& outWorldZ);
+
 private:
 	void EnsureMinimap();
 	void RebuildMinimap();
@@ -52,10 +55,20 @@ private:
 
 	float PanelWidth() const;
 	float PanelX() const;
+	Rectangle MinimapScreenRect() const;
 
 	Tab m_ActiveTab = Tab::Powers;
 	int m_SelectedPower = 0;      // 0 = Flatten (wired)
 	int m_SelectedUnitCreate = -1;
+
+	// Powers-tab hover tooltip (U7-style delay).
+	int m_HoveredPower = -1;
+	float m_PowerHoverStart = 0.0f;
+	static constexpr float kPowerTooltipDelay = 0.5f;
+
+	bool m_MinimapJumpPending = false;
+	float m_MinimapJumpX = 0.0f;
+	float m_MinimapJumpZ = 0.0f;
 
 	RenderTexture2D m_MinimapRT{};
 	bool m_MinimapReady = false;

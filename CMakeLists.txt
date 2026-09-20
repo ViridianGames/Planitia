@@ -226,6 +226,7 @@ set(SOURCES
         Source/Terrain.cpp
         Source/TitleState.cpp
         Source/UpnpPortMap.cpp
+        Source/WalkerSprites.cpp
 )
 
 # Organize files into virtual folders in Visual Studio

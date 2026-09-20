@@ -6,6 +6,7 @@
 #include "Geist/Engine.h"
 #include "Geist/Globals.h"
 #include "Geist/ResourceManager.h"
+#include "Geist/TooltipSystem.h"
 #include "Terrain.h"
 #include "Unit.h"
 
@@ -35,21 +36,29 @@ namespace
 		return Rectangle{ panelX + 1.0f, contentY, panelW - 2.0f, panelH - contentY - kPad };
 	}
 
-	constexpr int kPowerCols = 2;
-	constexpr float kPowerSlotH = 28.0f;
+	// Icon-only power grid (labels live in bottom-of-panel tooltips).
+	// Fixed 26x26 cells/icons so borders stay consistent at 480x270 virtual res.
+	constexpr int kPowerCols = 4;
+	constexpr float kPowerCell = 26.0f;
+	constexpr float kPowerIcon = 26.0f;
+	constexpr float kPowerGap = 1.0f;
+	constexpr float kPowerOuterPad = 2.0f;
 	constexpr float kUnitSlotH = 22.0f;
 	constexpr float kUnitHeaderH = 14.0f; // label above unit buttons
 
 	Rectangle PowerSlotRect(const Rectangle& content, int index)
 	{
-		const float slotW = (content.width - kPad * 3) / static_cast<float>(kPowerCols);
 		const int col = index % kPowerCols;
 		const int row = index / kPowerCols;
+		// Center the 4-cell row in the content so leftover width is split evenly.
+		const float rowW = kPowerCell * static_cast<float>(kPowerCols)
+			+ kPowerGap * static_cast<float>(kPowerCols - 1);
+		const float startX = content.x + (content.width - rowW) * 0.5f;
 		return Rectangle{
-			content.x + kPad + col * (slotW + kPad),
-			content.y + kPad + row * (kPowerSlotH + 2.0f),
-			slotW,
-			kPowerSlotH
+			startX + col * (kPowerCell + kPowerGap),
+			content.y + kPowerOuterPad + row * (kPowerCell + kPowerGap),
+			kPowerCell,
+			kPowerCell
 		};
 	}
 
@@ -77,26 +86,38 @@ namespace
 	struct PowerSlot
 	{
 		const char* name;
-		bool available;
-		int tileX; // source pixel in guiicons.png (classic In-Game.txt)
+		bool available; // false = HUD stub (gray inactive tile, not selectable)
+		int tileX;      // top-left of the 2x2 state block in guiicons.png
 		int tileY;
-		PlayerAction action;
+		PlayerAction action; // ignored when !available
 	};
 
-	// guiicons.png: 64x64 icons on a 128px grid (TileX/TileY from original GUI data).
+	// guiicons.png: each power is a 128x128 block of four 64x64 states
+	// (TL active, TR highlight, BL alt, BR inactive/gray). Two powers per row.
 	constexpr int kIconSrcSize = 64;
-	constexpr int kIconStride = 128;
+	constexpr int kIconBlock = 128;
 
-	// MVP roster - all wired for Day 3 casting.
 	const PowerSlot kPowers[] = {
+		// Row 0: Flatten | Earthquake
 		{ "Flatten", true, 0, 0, PlayerAction::Flatten },
-		{ "Bless", true, 128, 0, PlayerAction::Bless },
-		{ "Stone Rain", true, 0, 256, PlayerAction::StoneRain },
-		{ "Swamp", true, 128, 256, PlayerAction::Swamp },
-		{ "Lightning", true, 0, 384, PlayerAction::Lightning },
-		{ "Flamestrike", true, 128, 384, PlayerAction::Flamestrike },
-		{ "Earthquake", true, 0, 512, PlayerAction::Earthquake },
-		{ "Heal Light", true, 128, 128, PlayerAction::HealingLight },
+		{ "Earthquake", true, kIconBlock, 0, PlayerAction::Earthquake },
+		// Row 1: Stone Rain | Flamestrike
+		{ "Stone Rain", true, 0, kIconBlock, PlayerAction::StoneRain },
+		{ "Flamestrike", true, kIconBlock, kIconBlock, PlayerAction::Flamestrike },
+		// Row 2: Lightning | Lightning Storm
+		{ "Lightning", true, 0, kIconBlock * 2, PlayerAction::Lightning },
+		{ "Lightning Storm", false, kIconBlock, kIconBlock * 2, PlayerAction::Flatten },
+		// Row 3: Bless Land | Swamp
+		{ "Bless Land", true, 0, kIconBlock * 3, PlayerAction::Bless },
+		{ "Swamp", true, kIconBlock, kIconBlock * 3, PlayerAction::Swamp },
+		// Row 4: Volcano | Meteor
+		{ "Volcano", false, 0, kIconBlock * 4, PlayerAction::Flatten },
+		{ "Meteor", false, kIconBlock, kIconBlock * 4, PlayerAction::Flatten },
+		// Row 5: Healing Rain | Golem
+		{ "Healing Rain", true, 0, kIconBlock * 5, PlayerAction::HealingLight },
+		{ "Golem", false, kIconBlock, kIconBlock * 5, PlayerAction::Flatten },
+		// Row 6: Armageddon
+		{ "Armageddon", false, 0, kIconBlock * 6, PlayerAction::Flatten },
 	};
 	constexpr int kPowerCount = static_cast<int>(sizeof(kPowers) / sizeof(kPowers[0]));
 
@@ -192,10 +213,29 @@ Rectangle MainHud::PanelRect() const
 	return Rectangle{ PanelX(), 0.0f, PanelWidth(), g_Engine->m_RenderHeight };
 }
 
+Rectangle MainHud::MinimapScreenRect() const
+{
+	const float px = PanelX();
+	const float pw = PanelWidth();
+	const float mapX = px + (pw - static_cast<float>(kMinimapSize)) * 0.5f;
+	const float mapY = kPad;
+	return Rectangle{ mapX, mapY, static_cast<float>(kMinimapSize), static_cast<float>(kMinimapSize) };
+}
+
 bool MainHud::IsMouseOver() const
 {
 	const Vector2 mouse = GetScaledMousePosition();
 	return CheckCollisionPointRec(mouse, PanelRect());
+}
+
+bool MainHud::ConsumeMinimapCameraJump(float& outWorldX, float& outWorldZ)
+{
+	if (!m_MinimapJumpPending)
+		return false;
+	outWorldX = m_MinimapJumpX;
+	outWorldZ = m_MinimapJumpZ;
+	m_MinimapJumpPending = false;
+	return true;
 }
 
 void MainHud::EnsureMinimap()
@@ -292,13 +332,47 @@ void MainHud::Update()
 		m_MinimapRebuildTick = tick;
 	}
 
-	if (!IsMouseOver() || !IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-		return;
-
 	const Vector2 mouse = GetScaledMousePosition();
 	const float px = PanelX();
 	const float pw = PanelWidth();
 	const float ph = g_Engine ? g_Engine->m_RenderHeight : 270.0f;
+	const Rectangle content = HudContentRect(px, pw, ph);
+
+	// Track power-icon hover for delayed tooltips (every frame, not only on click).
+	int hovered = -1;
+	if (m_ActiveTab == Tab::Powers && IsMouseOver() && CheckCollisionPointRec(mouse, content))
+	{
+		for (int i = 0; i < kPowerCount; ++i)
+		{
+			if (CheckCollisionPointRec(mouse, PowerSlotRect(content, i)))
+			{
+				hovered = i;
+				break;
+			}
+		}
+	}
+	if (hovered != m_HoveredPower)
+	{
+		m_HoveredPower = hovered;
+		m_PowerHoverStart = static_cast<float>(GetTime());
+	}
+
+	if (!IsMouseOver() || !IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+		return;
+
+	// Minimap click -> camera jump (handled by MainState via ConsumeMinimapCameraJump).
+	const Rectangle mapRect = MinimapScreenRect();
+	if (CheckCollisionPointRec(mouse, mapRect) && g_Terrain)
+	{
+		const float localX = mouse.x - mapRect.x;
+		const float localY = mouse.y - mapRect.y;
+		const float cellsX = static_cast<float>(g_Terrain->m_CellWidth);
+		const float cellsZ = static_cast<float>(g_Terrain->m_CellHeight);
+		m_MinimapJumpX = std::clamp(localX * cellsX / static_cast<float>(kMinimapSize), 0.0f, cellsX);
+		m_MinimapJumpZ = std::clamp(localY * cellsZ / static_cast<float>(kMinimapSize), 0.0f, cellsZ);
+		m_MinimapJumpPending = true;
+		return;
+	}
 
 	// Tab bar hit-test.
 	const float tabsY = HudTabsY();
@@ -311,7 +385,6 @@ void MainHud::Update()
 		return;
 	}
 
-	const Rectangle content = HudContentRect(px, pw, ph);
 	if (!CheckCollisionPointRec(mouse, content))
 		return;
 
@@ -431,42 +504,65 @@ void MainHud::DrawPowersTab(float x, float y, float width, float height)
 {
 	(void)height;
 	const Rectangle content{ x, y, width, height };
-	constexpr float iconSize = 24.0f;
+	const Player& local = g_Sim.GetPlayer(g_Sim.LocalPlayerSlot());
 
 	for (int i = 0; i < kPowerCount; ++i)
 	{
 		const Rectangle r = PowerSlotRect(content, i);
 		const bool selected = (m_SelectedPower == i);
-		const bool avail = kPowers[i].available;
+		const bool implemented = kPowers[i].available;
+		const bool canCast = implemented && g_Sim.CanAfford(local, kPowers[i].action);
+		const bool hovered = (m_HoveredPower == i);
+		const bool showGray = !canCast; // stub, or not enough mana / on cooldown
 
-		Color bg = avail ? Color{ 40, 55, 75, 255 } : Color{ 30, 30, 35, 255 };
-		if (selected && avail)
-			bg = Color{ 70, 100, 70, 255 };
+		const float iconSize = kPowerIcon;
+
+		Color bg = Color{ 30, 30, 35, 255 };
+		if (canCast)
+			bg = selected ? Color{ 70, 100, 70, 255 }
+				: (hovered ? Color{ 55, 75, 100, 255 } : Color{ 40, 55, 75, 255 });
+		else if (selected)
+			bg = Color{ 50, 55, 45, 255 };
 		DrawRectangleRec(r, bg);
-		DrawRectangleLinesEx(r, 1.0f, selected ? Color{ 180, 255, 180, 255 } : Color{ 90, 100, 120, 255 });
 
 		if (m_IconsTex && m_IconsTex->id != 0)
 		{
+			// Active = top-left of 2x2; inactive/gray = bottom-right.
+			int srcX = kPowers[i].tileX;
+			int srcY = kPowers[i].tileY;
+			if (showGray)
+			{
+				srcX += kIconSrcSize;
+				srcY += kIconSrcSize;
+			}
 			const Rectangle src{
-				static_cast<float>(kPowers[i].tileX),
-				static_cast<float>(kPowers[i].tileY),
+				static_cast<float>(srcX),
+				static_cast<float>(srcY),
 				static_cast<float>(kIconSrcSize),
 				static_cast<float>(kIconSrcSize)
 			};
-			const Rectangle dst{ r.x + 2.0f, r.y + (r.height - iconSize) * 0.5f, iconSize, iconSize };
-			DrawTexturePro(*m_IconsTex, src, dst, Vector2{ 0, 0 }, 0.0f, avail ? WHITE : Color{ 120, 120, 120, 180 });
+			const Rectangle dst{
+				r.x + (r.width - iconSize) * 0.5f,
+				r.y + (r.height - iconSize) * 0.5f,
+				iconSize,
+				iconSize
+			};
+			DrawTexturePro(*m_IconsTex, src, dst, Vector2{ 0, 0 }, 0.0f, WHITE);
 		}
 
-		if (g_smallFont)
+		// Draw selection/hover chrome AFTER the icon so a full-cell sprite can't cover it.
+		Color border = Color{ 90, 100, 120, 255 };
+		float borderThick = 1.0f;
+		if (selected)
 		{
-			DrawOutlinedText(
-				g_smallFont,
-				kPowers[i].name,
-				{ r.x + iconSize + 6.0f, r.y + (r.height - g_smallFont->baseSize) * 0.5f },
-				static_cast<float>(g_smallFont->baseSize),
-				1,
-				avail ? WHITE : Color{ 120, 120, 130, 255 });
+			border = Color{ 180, 255, 180, 255 };
+			borderThick = 2.0f;
 		}
+		else if (hovered && implemented)
+		{
+			border = Color{ 200, 210, 230, 255 };
+		}
+		DrawRectangleLinesEx(r, borderThick, border);
 	}
 }
 
@@ -615,4 +711,25 @@ void MainHud::Draw()
 
 	const Rectangle content = HudContentRect(px, pw, ph);
 	DrawTabContent(content.x, content.y, content.width, content.height);
+
+	// Power name tooltip: bottom of screen, flush with left edge of the HUD panel.
+	if (m_ActiveTab == Tab::Powers
+		&& m_HoveredPower >= 0
+		&& m_HoveredPower < kPowerCount
+		&& g_smallFont
+		&& (static_cast<float>(GetTime()) - m_PowerHoverStart) >= kPowerTooltipDelay)
+	{
+		const float fs = static_cast<float>(g_smallFont->baseSize);
+		// Lower-right anchor at panel left edge => tooltip sits over the world,
+		// with its right edge flush against the HUD.
+		DrawToolTip(
+			g_smallFont.get(),
+			fs,
+			kPowers[m_HoveredPower].name,
+			static_cast<int>(px),
+			static_cast<int>(ph),
+			1.0f,
+			2, // lower-right anchor
+			WHITE);
+	}
 }

@@ -60,6 +60,9 @@ public:
 	// Client: set on Welcome so the lobby can print "You are Blue".
 	bool TakePendingColorNotify(std::string& outColorName);
 
+	// Host/client: version mismatch or other join rejection for lobby console.
+	bool TakePendingNetError(std::string& outMessage);
+
 private:
 	void EnsureLocalCommandSubmitted(NetSession& net);
 	void BroadcastOrSendCommand(const Net::PlayerCommand& cmd, NetSession& net);
@@ -98,6 +101,9 @@ private:
 	bool m_HasPendingStart = false;
 	uint32_t m_PendingStartSeed = 0;
 	int m_PendingStartPlayers = 2;
+
+	bool m_PendingNetError = false;
+	std::string m_PendingNetErrorMsg;
 	uint16_t m_PendingStartTurnLen = 1;
 
 	// Commands that arrived before BeginMatch (same ENet service burst as StartMatch).

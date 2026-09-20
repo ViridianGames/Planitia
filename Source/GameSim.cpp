@@ -3,6 +3,7 @@
 #include "GameGlobals.h"
 #include "Geist/Logging.h"
 #include "Terrain.h"
+#include "WalkerSprites.h"
 
 #include "raymath.h"
 
@@ -44,6 +45,20 @@ namespace
 		if (!g_vitalRNG)
 			return 0;
 		return static_cast<int>(g_vitalRNG->RandomRange(0, 2)) - 1; // -1, 0, 1
+	}
+
+	// Map world XZ delta → U7 walk facing (0=SW .. 7=S).
+	int FacingFromDelta(float dx, float dz)
+	{
+		if (dx * dx + dz * dz < 1e-8f)
+			return -1;
+		float a = atan2f(dx, dz); // 0 = +Z (S)
+		a += PI / 8.0f;
+		if (a < 0.0f)
+			a += 2.0f * PI;
+		const int sector = static_cast<int>(a / (PI / 4.0f)) % 8;
+		static const int kSectorToFacing[8] = { 7, 6, 5, 4, 3, 2, 1, 0 };
+		return kSectorToFacing[sector];
 	}
 }
 
@@ -669,6 +684,9 @@ void GameSim::MoveToward(Unit& unit, float tickDt)
 		unit.m_Pos.x += delta.x;
 		unit.m_Pos.z += delta.z;
 	}
+	const int facing = FacingFromDelta(delta.x, delta.z);
+	if (facing >= 0)
+		unit.m_Facing = facing;
 	ClampToMap(unit.m_Pos.x, unit.m_Pos.z);
 	unit.m_Pos.y = GroundY(unit.m_Pos.x, unit.m_Pos.z);
 }
@@ -1185,6 +1203,8 @@ void GameSim::UpdateUnit(Unit& unit, float tickDt)
 
 void GameSim::DrawUnits(const Camera3D& camera) const
 {
+	WalkerSprites::EnsureLoaded();
+
 	for (const auto& [id, unit] : m_Units)
 	{
 		(void)id;
@@ -1194,6 +1214,13 @@ void GameSim::DrawUnits(const Camera3D& camera) const
 		Color color = (unit.m_Team >= 0 && unit.m_Team < kMaxPlayers)
 			? GetPlayer(unit.m_Team).TeamColor()
 			: PlayerTeamColor(unit.m_Team);
+
+		if (unit.IsWalker() && WalkerSprites::IsReady())
+		{
+			WalkerSprites::DrawWalker(unit, camera, color);
+			continue;
+		}
+
 		float h = 0.85f;
 		float w = 0.4f;
 		if (unit.IsVillage())
@@ -1247,7 +1274,6 @@ void GameSim::DrawUnits(const Camera3D& camera) const
 		DrawCube(Vector3{ unit.m_Pos.x, unit.m_Pos.y + 0.02f, unit.m_Pos.z }, w * 1.2f, 0.02f, w * 0.8f,
 			Color{ 0, 0, 0, 80 });
 	}
-	(void)camera;
 }
 
 bool GameSim::TryFlatten(int playerSlot, int cellX, int cellZ)

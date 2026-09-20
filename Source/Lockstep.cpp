@@ -225,6 +225,16 @@ bool LockstepController::TakePendingColorNotify(std::string& outColorName)
 	return true;
 }
 
+bool LockstepController::TakePendingNetError(std::string& outMessage)
+{
+	if (!m_PendingNetError)
+		return false;
+	outMessage = m_PendingNetErrorMsg;
+	m_PendingNetError = false;
+	m_PendingNetErrorMsg.clear();
+	return true;
+}
+
 void LockstepController::HostBroadcastStart(NetSession& net, uint32_t mapSeed)
 {
 	const int peers = net.ConnectedPeerCount();
@@ -366,7 +376,36 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 			if (!Net::ReadU8(p, end, ch)) break;
 			name.push_back(static_cast<char>(ch));
 		}
+		if (protocol != Net::kGameVersion)
+		{
+			const std::string msg = "Rejected " + (name.empty() ? std::string("client") : name)
+				+ ": version mismatch (theirs " + std::to_string(protocol)
+				+ ", ours " + std::to_string(Net::kGameVersion) + ")";
+			Log("Lockstep: " + msg);
+			m_Status = msg;
+			m_PendingNetError = true;
+			m_PendingNetErrorMsg = msg;
+			net.SendToPeer(peerIndex, Net::PackVersionReject(protocol, Net::kGameVersion));
+			net.DisconnectPeer(peerIndex);
+			break;
+		}
 		OnPeerHelloAsHost(peerIndex, name, net);
+		break;
+	}
+
+	case Net::PacketType::VersionReject:
+	{
+		uint16_t theirs = 0, hostVer = 0;
+		if (!Net::ReadU16(p, end, theirs)) break;
+		if (!Net::ReadU16(p, end, hostVer)) break;
+		(void)theirs;
+		const std::string msg = "Join failed: version mismatch (you "
+			+ Net::VersionLabel() + ", host v" + std::to_string(hostVer) + ")";
+		Log("Lockstep: " + msg);
+		m_Status = msg;
+		m_PendingNetError = true;
+		m_PendingNetErrorMsg = msg;
+		net.Disconnect();
 		break;
 	}
 
@@ -375,7 +414,18 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		uint16_t protocol = 0;
 		uint8_t slot = 0, maxP = 0, color = 0;
 		uint16_t port = 0, turnLen = 0;
-		if (!Net::ReadU16(p, end, protocol) || protocol != Net::kProtocolVersion) break;
+		if (!Net::ReadU16(p, end, protocol)) break;
+		if (protocol != Net::kGameVersion)
+		{
+			const std::string msg = "Join failed: host version v" + std::to_string(protocol)
+				+ " != local " + Net::VersionLabel();
+			Log("Lockstep: " + msg);
+			m_Status = msg;
+			m_PendingNetError = true;
+			m_PendingNetErrorMsg = msg;
+			net.Disconnect();
+			break;
+		}
 		if (!Net::ReadU8(p, end, slot)) break;
 		if (!Net::ReadU8(p, end, maxP)) break;
 		if (!Net::ReadU16(p, end, port)) break;

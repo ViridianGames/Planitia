@@ -55,6 +55,11 @@ void DrawPerfCounter(Font* font, int loc = 0);
 
 inline bool g_showPerfCounter = true;
 
+// Cutout shader for walker billboards (and later other alpha sprites).
+// Discards low-alpha texels so overlapping sprites don't blend through each other.
+inline Shader g_alphaDiscard{};
+inline int g_alphaDiscardCutoffLoc = -1;
+
 // Map window mouse pixels -> virtual render pixels (same stretch as DrawTexturePro).
 Vector2 GetScaledMousePosition();
 

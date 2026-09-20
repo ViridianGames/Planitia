@@ -136,6 +136,45 @@ namespace
 			s.pop_back();
 		return s;
 	}
+
+	// Six lobby actions stacked bottom-right (narrower so they clear the status text).
+	struct LobbyButtons
+	{
+		Rectangle host{};
+		Rectangle copy{};
+		Rectangle paste{};
+		Rectangle join{};
+		Rectangle start{};
+		Rectangle back{};
+		float btnW = 0.0f;
+		float btnH = 0.0f;
+	};
+
+	LobbyButtons LayoutLobbyButtons()
+	{
+		LobbyButtons out{};
+		const float fs = g_smallFont ? static_cast<float>(g_smallFont->baseSize) : 8.0f;
+		const float renderW = g_Engine ? static_cast<float>(g_Engine->m_RenderWidth) : 320.0f;
+		const float renderH = g_Engine ? static_cast<float>(g_Engine->m_RenderHeight) : 200.0f;
+		constexpr float kMargin = 8.0f;
+		constexpr float kGap = 4.0f;
+		constexpr int kCount = 6;
+
+		// ~2/3 of the old centered panel width (was min(240, 60% screen)).
+		out.btnW = std::min(160.0f, renderW * 0.40f);
+		out.btnH = fs + 10.0f;
+		const float stackH = static_cast<float>(kCount) * out.btnH + static_cast<float>(kCount - 1) * kGap;
+		const float x = renderW - kMargin - out.btnW;
+		float y = renderH - kMargin - stackH;
+
+		out.host = Btn(x, y, out.btnW, out.btnH); y += out.btnH + kGap;
+		out.copy = Btn(x, y, out.btnW, out.btnH); y += out.btnH + kGap;
+		out.paste = Btn(x, y, out.btnW, out.btnH); y += out.btnH + kGap;
+		out.join = Btn(x, y, out.btnW, out.btnH); y += out.btnH + kGap;
+		out.start = Btn(x, y, out.btnW, out.btnH); y += out.btnH + kGap;
+		out.back = Btn(x, y, out.btnW, out.btnH);
+		return out;
+	}
 }
 
 void MultiplayerMenuState::Init(const std::string& /*configfile*/)
@@ -235,8 +274,9 @@ void MultiplayerMenuState::OnEnter()
 	g_Lockstep.ResetOffline(0);
 	g_Lockstep.PauseMatch("Multiplayer lobby");
 	RefreshHostInvite();
-	AddConsoleString("Multiplayer lobby - Host or Join", Color{ 200, 210, 230, 255 });
+	AddConsoleString("Multiplayer lobby - Host or Join (" + Net::VersionLabel() + ")", Color{ 200, 210, 230, 255 });
 	AddConsoleString("Share invite ip:port (Copy). Friend pastes then Join.", Color{ 180, 195, 220, 255 });
+	AddConsoleString("All players must be on " + Net::VersionLabel(), Color{ 180, 195, 220, 255 });
 }
 
 void MultiplayerMenuState::OnExit()
@@ -327,6 +367,10 @@ void MultiplayerMenuState::Update()
 	if (g_Lockstep.TakePendingColorNotify(myColor))
 		AddConsoleString("You are playing as " + myColor, PlayerColorRgb(g_Lockstep.ColorForSlot(g_Lockstep.LocalSlot())));
 
+	std::string netErr;
+	if (g_Lockstep.TakePendingNetError(netErr))
+		AddConsoleString(netErr, RED);
+
 	if (g_Lockstep.MatchRunning() && g_Net.GetMode() == NetSession::Mode::Client)
 	{
 		AddConsoleString("Host started the match - entering game", GREEN);
@@ -345,24 +389,12 @@ void MultiplayerMenuState::Update()
 		return;
 
 	const Vector2 mouse = GetScaledMousePosition();
-	const float fs = g_smallFont ? static_cast<float>(g_smallFont->baseSize) : 8.0f;
-	const float panelW = std::min(240.0f, g_Engine->m_RenderWidth * 0.60f);
-	const float panelX = (g_Engine->m_RenderWidth - panelW) * 0.5f;
-	float yy = 56.0f;
-	const float btnH = fs + 10.0f;
-	const float btnW = panelW;
-
-	const Rectangle hostBtn = Btn(panelX, yy, btnW, btnH); yy += btnH + 4.0f;
-	const Rectangle copyBtn = Btn(panelX, yy, btnW, btnH); yy += btnH + 4.0f;
-	const Rectangle pasteBtn = Btn(panelX, yy, btnW, btnH); yy += btnH + 4.0f;
-	const Rectangle joinBtn = Btn(panelX, yy, btnW, btnH); yy += btnH + 4.0f;
-	const Rectangle startBtn = Btn(panelX, yy, btnW, btnH); yy += btnH + 4.0f;
-	const Rectangle backBtn = Btn(panelX, yy, btnW, btnH);
+	const LobbyButtons btns = LayoutLobbyButtons();
 
 	const uint16_t port = CfgPort();
 	const uint16_t turnLen = CfgTurnLength();
 
-	if (CheckCollisionPointRec(mouse, hostBtn))
+	if (CheckCollisionPointRec(mouse, btns.host))
 	{
 		if (g_Net.Host(port))
 		{
@@ -389,8 +421,11 @@ void MultiplayerMenuState::Update()
 			}
 			else
 			{
+				const std::string& upnpErr = g_Net.UpnpError();
 				AddConsoleString("UPnP failed - copied LAN invite only", YELLOW);
-				AddConsoleString("Internet friends need manual port forward", YELLOW);
+				if (!upnpErr.empty())
+					AddConsoleString("UPnP reason: " + upnpErr, Color{ 220, 180, 100, 255 });
+				AddConsoleString("Internet friends need manual UDP port forward to this PC", YELLOW);
 				AddConsoleString("Invite: " + m_HostInvite, GREEN);
 			}
 			AddConsoleString("Log: " + hostLog, Color{ 180, 200, 220, 255 });
@@ -400,7 +435,7 @@ void MultiplayerMenuState::Update()
 		return;
 	}
 
-	if (CheckCollisionPointRec(mouse, copyBtn))
+	if (CheckCollisionPointRec(mouse, btns.copy))
 	{
 		if (g_Net.GetMode() != NetSession::Mode::Host)
 		{
@@ -414,7 +449,7 @@ void MultiplayerMenuState::Update()
 		return;
 	}
 
-	if (CheckCollisionPointRec(mouse, pasteBtn))
+	if (CheckCollisionPointRec(mouse, btns.paste))
 	{
 		const char* clip = GetClipboardText();
 		if (!clip || !*clip)
@@ -435,7 +470,7 @@ void MultiplayerMenuState::Update()
 		return;
 	}
 
-	if (CheckCollisionPointRec(mouse, joinBtn))
+	if (CheckCollisionPointRec(mouse, btns.join))
 	{
 		if (g_Net.Join(m_JoinIp, m_JoinPort))
 		{
@@ -454,7 +489,7 @@ void MultiplayerMenuState::Update()
 		return;
 	}
 
-	if (CheckCollisionPointRec(mouse, startBtn))
+	if (CheckCollisionPointRec(mouse, btns.start))
 	{
 		if (g_Net.GetMode() != NetSession::Mode::Host)
 		{
@@ -482,7 +517,7 @@ void MultiplayerMenuState::Update()
 		return;
 	}
 
-	if (CheckCollisionPointRec(mouse, backBtn))
+	if (CheckCollisionPointRec(mouse, btns.back))
 	{
 		g_Net.Disconnect();
 		g_Lockstep.ResetOffline(0);
@@ -505,6 +540,9 @@ void MultiplayerMenuState::Draw()
 
 	if (g_smallFont)
 	{
+		DrawOutlinedText(g_smallFont, TextFormat("Build %s - all players must match", Net::VersionLabel().c_str()),
+			{ 8.0f, y }, fs, 1, Color{ 160, 200, 160, 255 });
+		y += fs + 4.0f;
 		DrawOutlinedText(g_smallFont, "No Steam/GOG needed. Share invite, friend pastes + Join.",
 			{ 8.0f, y }, fs, 1, Color{ 180, 195, 220, 255 });
 		y += fs + 8.0f;
@@ -540,6 +578,12 @@ void MultiplayerMenuState::Draw()
 				DrawOutlinedText(g_smallFont, "UPnP unavailable - internet needs port forward",
 					{ 8.0f, y }, fs, 1, Color{ 220, 180, 100, 255 });
 				y += fs + 2.0f;
+				if (!g_Net.UpnpError().empty())
+				{
+					DrawOutlinedText(g_smallFont, TextFormat("UPnP: %s", g_Net.UpnpError().c_str()),
+						{ 8.0f, y }, fs, 1, Color{ 220, 160, 100, 255 });
+					y += fs + 2.0f;
+				}
 			}
 		}
 		else
@@ -549,55 +593,52 @@ void MultiplayerMenuState::Draw()
 					m_JoinIp.c_str(), static_cast<int>(m_JoinPort),
 					g_Net.ConnectedPeerCount(), g_Lockstep.LocalSlot()),
 				{ 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
+			y += fs + 2.0f;
+		}
+
+		// Seat list under status (left) so it stays clear of the bottom-right buttons.
+		const bool hosting = g_Net.GetMode() == NetSession::Mode::Host;
+		if (hosting)
+		{
+			y += 6.0f;
+			DrawOutlinedText(g_smallFont, TextFormat("Lobby seats (%d/4):", 1 + g_Lockstep.OccupiedRemoteSlots()),
+				{ 8.0f, y }, fs, 1, WHITE);
+			y += fs + 2.0f;
+			DrawOutlinedText(g_smallFont, TextFormat("1. Host (you) - %s", PlayerColorName(PlayerColorId::Green)),
+				{ 8.0f, y }, fs, 1, PlayerColorRgb(PlayerColorId::Green));
+			y += fs + 2.0f;
+			for (int slot = 1; slot < kMaxPlayers; ++slot)
+			{
+				const std::string name = g_Lockstep.PeerNameForSlot(slot);
+				if (name.empty())
+				{
+					DrawOutlinedText(g_smallFont, TextFormat("%d. (open)", slot + 1),
+						{ 8.0f, y }, fs, 1, Color{ 140, 150, 160, 255 });
+				}
+				else
+				{
+					const PlayerColorId color = g_Lockstep.ColorForSlot(slot);
+					DrawOutlinedText(g_smallFont,
+						TextFormat("%d. %s - %s", slot + 1, name.c_str(), PlayerColorName(color)),
+						{ 8.0f, y }, fs, 1, PlayerColorRgb(color));
+				}
+				y += fs + 2.0f;
+			}
 		}
 	}
 
-	const float panelW = g_Engine ? std::min(240.0f, g_Engine->m_RenderWidth * 0.60f) : 240.0f;
-	const float panelX = g_Engine ? (g_Engine->m_RenderWidth - panelW) * 0.5f : 40.0f;
-	float yy = 56.0f;
-	const float btnH = fs + 10.0f;
+	const LobbyButtons btns = LayoutLobbyButtons();
 	const bool hosting = g_Net.GetMode() == NetSession::Mode::Host;
-
 	const bool canStart = hosting && g_Net.ConnectedPeerCount() >= 1;
 
-	DrawBtn(Btn(panelX, yy, panelW, btnH), "Host LAN/IP"); yy += btnH + 4.0f;
-	DrawBtn(Btn(panelX, yy, panelW, btnH), "Copy Invite (Ctrl+C)", hosting); yy += btnH + 4.0f;
-	DrawBtn(Btn(panelX, yy, panelW, btnH), "Paste Invite (Ctrl+V)"); yy += btnH + 4.0f;
-	DrawBtn(Btn(panelX, yy, panelW, btnH),
-		TextFormat("Join %s:%d", m_JoinIp.c_str(), static_cast<int>(m_JoinPort))); yy += btnH + 4.0f;
-	DrawBtn(Btn(panelX, yy, panelW, btnH),
+	DrawBtn(btns.host, "Host LAN/IP");
+	DrawBtn(btns.copy, "Copy Invite (Ctrl+C)", hosting);
+	DrawBtn(btns.paste, "Paste Invite (Ctrl+V)");
+	DrawBtn(btns.join, TextFormat("Join %s:%d", m_JoinIp.c_str(), static_cast<int>(m_JoinPort)));
+	DrawBtn(btns.start,
 		canStart ? "Start Match (host)" : "Start Match (need 1+ player)",
-		canStart); yy += btnH + 4.0f;
-	DrawBtn(Btn(panelX, yy, panelW, btnH), "Back to Title");
-
-	// Seat list for host (up to 4 players: you + 3 joiners).
-	if (hosting && g_smallFont)
-	{
-		yy += 8.0f;
-		DrawOutlinedText(g_smallFont, TextFormat("Lobby seats (%d/4):", 1 + g_Lockstep.OccupiedRemoteSlots()),
-			{ panelX, yy }, fs, 1, WHITE);
-		yy += fs + 2.0f;
-		DrawOutlinedText(g_smallFont, TextFormat("1. Host (you) - %s", PlayerColorName(PlayerColorId::Green)),
-			{ panelX, yy }, fs, 1, PlayerColorRgb(PlayerColorId::Green));
-		yy += fs + 2.0f;
-		for (int slot = 1; slot < kMaxPlayers; ++slot)
-		{
-			const std::string name = g_Lockstep.PeerNameForSlot(slot);
-			if (name.empty())
-			{
-				DrawOutlinedText(g_smallFont, TextFormat("%d. (open)", slot + 1),
-					{ panelX, yy }, fs, 1, Color{ 140, 150, 160, 255 });
-			}
-			else
-			{
-				const PlayerColorId color = g_Lockstep.ColorForSlot(slot);
-				DrawOutlinedText(g_smallFont,
-					TextFormat("%d. %s - %s", slot + 1, name.c_str(), PlayerColorName(color)),
-					{ panelX, yy }, fs, 1, PlayerColorRgb(color));
-			}
-			yy += fs + 2.0f;
-		}
-	}
+		canStart);
+	DrawBtn(btns.back, "Back to Title");
 
 	DrawConsole();
 }

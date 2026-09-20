@@ -177,3 +177,5 @@
 /build/Makefile
 /build/cmake_install.cmake
 /build/liblua.a
+/cmake-build-debug/.cmake/api/v1/query/cache-v2
+/cmake-build-debug

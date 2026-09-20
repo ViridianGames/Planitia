@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geist">
+      <UniqueIdentifier>{B1C2D3E4-F5A6-4789-0123-456789ABCDEF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{C2D3E4F5-A6B7-4890-1234-56789ABCDEF0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\lua">
+      <UniqueIdentifier>{D3E4F5A6-B7C8-4901-2345-6789ABCDEF01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\enet">
+      <UniqueIdentifier>{E4F5A6B7-C8D9-4012-3456-789ABCDEF012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\miniupnpc">
+      <UniqueIdentifier>{F5A6B7C8-D9E0-4123-4567-89ABCDEF0123}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\GameGlobals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GameSim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Lockstep.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MainHud.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MainState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MultiplayerMenuState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\NetSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\OptionsState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Terrain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\TitleState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\UpnpPortMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\WalkerSprites.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\BaseUnits.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Config.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Engine.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Globals.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Gui.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\GuiElements.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\GuiManager.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\IO.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\InputSystem.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Logging.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\ParticleSystem.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\Primitives.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\RNG.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\RaylibModel.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\ResourceManager.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\ScriptingSystem.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\SoundSystem.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\StateMachine.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Geist\TooltipSystem.cpp">
+      <Filter>Geist</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lapi.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lcode.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lctype.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ldebug.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ldo.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ldump.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lfunc.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lgc.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\llex.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lmem.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lobject.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lopcodes.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lparser.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lstate.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lstring.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ltable.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ltm.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lundump.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lvm.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lzio.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lauxlib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lbaselib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lcorolib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ldblib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\liolib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lmathlib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\loslib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lstrlib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\ltablib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\linit.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\loadlib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\lua\src\lutf8lib.c">
+      <Filter>ThirdParty\lua</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\callbacks.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\compress.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\host.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\list.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\packet.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\peer.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\protocol.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\enet\win32.c">
+      <Filter>ThirdParty\enet</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\igd_desc_parse.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\miniupnpc.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\minixml.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\minisoap.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\minissdpc.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\miniwget.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpcommands.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpdev.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpreplyparse.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnperrors.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\connecthostport.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\portlistingparse.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\receivedata.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniupnpc\src\addr_is_reserved.c">
+      <Filter>ThirdParty\miniupnpc</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\GameGlobals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\GameSim.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\GameTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Lockstep.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MainHud.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MainState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MultiplayerMenuState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\NetProtocol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\NetSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\OptionsState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Terrain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\TitleState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Unit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\UpnpPortMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\WalkerSprites.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\BaseUnits.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Config.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Engine.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\GhostSerializer.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\GhostWindow.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Globals.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Gui.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\GuiElements.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\GuiManager.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\IO.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\InputSystem.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Logging.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Object.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\ParticleSystem.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\Primitives.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\RNG.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\RaylibModel.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\ResourceManager.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\ScriptingSystem.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\SoundSystem.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\State.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\StateMachine.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Geist\TooltipSystem.h">
+      <Filter>Geist</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

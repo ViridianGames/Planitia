@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A7D12768-D679-47E8-97C8-6DA8C9D55CFF}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>Planitia</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)Redist\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Planitia.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Planitia_Debug</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)Redist</LocalDebuggerWorkingDirectory>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)Redist\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Planitia.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Planitia</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)Redist</LocalDebuggerWorkingDirectory>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(ProjectDir)Redist\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Planitia.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Planitia</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(ProjectDir)Redist</LocalDebuggerWorkingDirectory>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(ProjectDir)Redist\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Planitia.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Planitia</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+    <LocalDebuggerWorkingDirectory Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(ProjectDir)Redist</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;DEBUG_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
+      
+      
+      
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat />
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>Full</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat />
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      
+      
+      
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="Source\GameGlobals.cpp" />
+    <ClCompile Include="Source\GameSim.cpp" />
+    <ClCompile Include="Source\Lockstep.cpp" />
+    <ClCompile Include="Source\Main.cpp" />
+    <ClCompile Include="Source\MainHud.cpp" />
+    <ClCompile Include="Source\MainState.cpp" />
+    <ClCompile Include="Source\MultiplayerMenuState.cpp" />
+    <ClCompile Include="Source\NetSession.cpp" />
+    <ClCompile Include="Source\OptionsState.cpp" />
+    <ClCompile Include="Source\Terrain.cpp" />
+    <ClCompile Include="Source\TitleState.cpp" />
+    <ClCompile Include="Source\UpnpPortMap.cpp" />
+    <ClCompile Include="Source\WalkerSprites.cpp" />
+    <ClCompile Include="Source\Geist\BaseUnits.cpp" />
+    <ClCompile Include="Source\Geist\Config.cpp" />
+    <ClCompile Include="Source\Geist\Engine.cpp" />
+    <ClCompile Include="Source\Geist\Globals.cpp" />
+    <ClCompile Include="Source\Geist\Gui.cpp" />
+    <ClCompile Include="Source\Geist\GuiElements.cpp" />
+    <ClCompile Include="Source\Geist\GuiManager.cpp" />
+    <ClCompile Include="Source\Geist\IO.cpp" />
+    <ClCompile Include="Source\Geist\InputSystem.cpp" />
+    <ClCompile Include="Source\Geist\Logging.cpp" />
+    <ClCompile Include="Source\Geist\ParticleSystem.cpp" />
+    <ClCompile Include="Source\Geist\Primitives.cpp" />
+    <ClCompile Include="Source\Geist\RNG.cpp" />
+    <ClCompile Include="Source\Geist\RaylibModel.cpp" />
+    <ClCompile Include="Source\Geist\ResourceManager.cpp" />
+    <ClCompile Include="Source\Geist\ScriptingSystem.cpp" />
+    <ClCompile Include="Source\Geist\SoundSystem.cpp" />
+    <ClCompile Include="Source\Geist\StateMachine.cpp" />
+    <ClCompile Include="Source\Geist\TooltipSystem.cpp" />
+    <ClCompile Include="ThirdParty\lua\src\lapi.c" />
+    <ClCompile Include="ThirdParty\lua\src\lcode.c" />
+    <ClCompile Include="ThirdParty\lua\src\lctype.c" />
+    <ClCompile Include="ThirdParty\lua\src\ldebug.c" />
+    <ClCompile Include="ThirdParty\lua\src\ldo.c" />
+    <ClCompile Include="ThirdParty\lua\src\ldump.c" />
+    <ClCompile Include="ThirdParty\lua\src\lfunc.c" />
+    <ClCompile Include="ThirdParty\lua\src\lgc.c" />
+    <ClCompile Include="ThirdParty\lua\src\llex.c" />
+    <ClCompile Include="ThirdParty\lua\src\lmem.c" />
+    <ClCompile Include="ThirdParty\lua\src\lobject.c" />
+    <ClCompile Include="ThirdParty\lua\src\lopcodes.c" />
+    <ClCompile Include="ThirdParty\lua\src\lparser.c" />
+    <ClCompile Include="ThirdParty\lua\src\lstate.c" />
+    <ClCompile Include="ThirdParty\lua\src\lstring.c" />
+    <ClCompile Include="ThirdParty\lua\src\ltable.c" />
+    <ClCompile Include="ThirdParty\lua\src\ltm.c" />
+    <ClCompile Include="ThirdParty\lua\src\lundump.c" />
+    <ClCompile Include="ThirdParty\lua\src\lvm.c" />
+    <ClCompile Include="ThirdParty\lua\src\lzio.c" />
+    <ClCompile Include="ThirdParty\lua\src\lauxlib.c" />
+    <ClCompile Include="ThirdParty\lua\src\lbaselib.c" />
+    <ClCompile Include="ThirdParty\lua\src\lcorolib.c" />
+    <ClCompile Include="ThirdParty\lua\src\ldblib.c" />
+    <ClCompile Include="ThirdParty\lua\src\liolib.c" />
+    <ClCompile Include="ThirdParty\lua\src\lmathlib.c" />
+    <ClCompile Include="ThirdParty\lua\src\loslib.c" />
+    <ClCompile Include="ThirdParty\lua\src\lstrlib.c" />
+    <ClCompile Include="ThirdParty\lua\src\ltablib.c" />
+    <ClCompile Include="ThirdParty\lua\src\linit.c" />
+    <ClCompile Include="ThirdParty\lua\src\loadlib.c" />
+    <ClCompile Include="ThirdParty\lua\src\lutf8lib.c" />
+    <ClCompile Include="ThirdParty\enet\callbacks.c" />
+    <ClCompile Include="ThirdParty\enet\compress.c" />
+    <ClCompile Include="ThirdParty\enet\host.c" />
+    <ClCompile Include="ThirdParty\enet\list.c" />
+    <ClCompile Include="ThirdParty\enet\packet.c" />
+    <ClCompile Include="ThirdParty\enet\peer.c" />
+    <ClCompile Include="ThirdParty\enet\protocol.c" />
+    <ClCompile Include="ThirdParty\enet\win32.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\igd_desc_parse.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\miniupnpc.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\minixml.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\minisoap.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\minissdpc.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\miniwget.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpcommands.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpdev.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnpreplyparse.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\upnperrors.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\connecthostport.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\portlistingparse.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\receivedata.c" />
+    <ClCompile Include="ThirdParty\miniupnpc\src\addr_is_reserved.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\GameGlobals.h" />
+    <ClInclude Include="Source\GameSim.h" />
+    <ClInclude Include="Source\GameTypes.h" />
+    <ClInclude Include="Source\Lockstep.h" />
+    <ClInclude Include="Source\MainHud.h" />
+    <ClInclude Include="Source\MainState.h" />
+    <ClInclude Include="Source\MultiplayerMenuState.h" />
+    <ClInclude Include="Source\NetProtocol.h" />
+    <ClInclude Include="Source\NetSession.h" />
+    <ClInclude Include="Source\OptionsState.h" />
+    <ClInclude Include="Source\Player.h" />
+    <ClInclude Include="Source\Terrain.h" />
+    <ClInclude Include="Source\TitleState.h" />
+    <ClInclude Include="Source\Unit.h" />
+    <ClInclude Include="Source\UpnpPortMap.h" />
+    <ClInclude Include="Source\WalkerSprites.h" />
+    <ClInclude Include="Source\Geist\BaseUnits.h" />
+    <ClInclude Include="Source\Geist\Config.h" />
+    <ClInclude Include="Source\Geist\Engine.h" />
+    <ClInclude Include="Source\Geist\GhostSerializer.h" />
+    <ClInclude Include="Source\Geist\GhostWindow.h" />
+    <ClInclude Include="Source\Geist\Globals.h" />
+    <ClInclude Include="Source\Geist\Gui.h" />
+    <ClInclude Include="Source\Geist\GuiElements.h" />
+    <ClInclude Include="Source\Geist\GuiManager.h" />
+    <ClInclude Include="Source\Geist\IO.h" />
+    <ClInclude Include="Source\Geist\InputSystem.h" />
+    <ClInclude Include="Source\Geist\Logging.h" />
+    <ClInclude Include="Source\Geist\Object.h" />
+    <ClInclude Include="Source\Geist\ParticleSystem.h" />
+    <ClInclude Include="Source\Geist\Primitives.h" />
+    <ClInclude Include="Source\Geist\RNG.h" />
+    <ClInclude Include="Source\Geist\RaylibModel.h" />
+    <ClInclude Include="Source\Geist\ResourceManager.h" />
+    <ClInclude Include="Source\Geist\ScriptingSystem.h" />
+    <ClInclude Include="Source\Geist\SoundSystem.h" />
+    <ClInclude Include="Source\Geist\State.h" />
+    <ClInclude Include="Source\Geist\StateMachine.h" />
+    <ClInclude Include="Source\Geist\TooltipSystem.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

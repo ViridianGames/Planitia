@@ -93,7 +93,7 @@
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source\Geist;$(ProjectDir)Source;$(ProjectDir)ThirdParty\nlohmann;$(ProjectDir)ThirdParty\lua\src;$(ProjectDir)ThirdParty\raylib\include;$(ProjectDir)ThirdParty\raylib\external\include;$(ProjectDir)ThirdParty\enet\include;$(ProjectDir)ThirdParty\miniupnpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
@@ -114,7 +114,8 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\raylib\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(ProjectDir)ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
@@ -130,7 +131,7 @@
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source\Geist;$(ProjectDir)Source;$(ProjectDir)ThirdParty\nlohmann;$(ProjectDir)ThirdParty\lua\src;$(ProjectDir)ThirdParty\raylib\include;$(ProjectDir)ThirdParty\raylib\external\include;$(ProjectDir)ThirdParty\enet\include;$(ProjectDir)ThirdParty\miniupnpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat />
@@ -151,7 +152,8 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\raylib\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(ProjectDir)ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -167,7 +169,7 @@
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source\Geist;$(ProjectDir)Source;$(ProjectDir)ThirdParty\nlohmann;$(ProjectDir)ThirdParty\lua\src;$(ProjectDir)ThirdParty\raylib\include;$(ProjectDir)ThirdParty\raylib\external\include;$(ProjectDir)ThirdParty\enet\include;$(ProjectDir)ThirdParty\miniupnpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat />
@@ -188,7 +190,8 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\raylib\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(ProjectDir)ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -204,7 +207,7 @@
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>./Source/Geist;./Source;./ThirdParty/nlohmann;./ThirdParty/lua/src;./ThirdParty/raylib/include;./ThirdParty/raylib/external/include;./ThirdParty/enet/include;./ThirdParty/miniupnpc/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source\Geist;$(ProjectDir)Source;$(ProjectDir)ThirdParty\nlohmann;$(ProjectDir)ThirdParty\lua\src;$(ProjectDir)ThirdParty\raylib\include;$(ProjectDir)ThirdParty\raylib\external\include;$(ProjectDir)ThirdParty\enet\include;$(ProjectDir)ThirdParty\miniupnpc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -225,7 +228,8 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\raylib\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(ProjectDir)ThirdParty\raylib\lib\raylib.lib;winmm.lib;ws2_32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -367,6 +371,19 @@
     <ClInclude Include="Source\Geist\State.h" />
     <ClInclude Include="Source\Geist\StateMachine.h" />
     <ClInclude Include="Source\Geist\TooltipSystem.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="ThirdParty\raylib\include\raylib.h" />
+    <ClInclude Include="ThirdParty\raylib\include\raymath.h" />
+    <ClInclude Include="ThirdParty\raylib\include\rlgl.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="ThirdParty\raylib\lib\raylib.lib" />
+    <None Include="ThirdParty\raylib\lib\raylib.dll" />
+    <None Include="ThirdParty\raylib\lib\raylibdll.lib" />
+    <None Include="ThirdParty\raylib\README.md" />
+    <None Include="ThirdParty\raylib\LICENSE" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

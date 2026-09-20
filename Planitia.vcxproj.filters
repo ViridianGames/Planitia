@@ -22,6 +22,9 @@
     <Filter Include="ThirdParty\miniupnpc">
       <UniqueIdentifier>{F5A6B7C8-D9E0-4123-4567-89ABCDEF0123}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ThirdParty\raylib">
+      <UniqueIdentifier>{A6B7C8D9-E0F1-4234-5678-9ABCDEF01234}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameGlobals.cpp">
@@ -401,5 +404,34 @@
     <ClInclude Include="Source\Geist\TooltipSystem.h">
       <Filter>Geist</Filter>
     </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="ThirdParty\raylib\include\raylib.h">
+      <Filter>ThirdParty\raylib</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\raylib\include\raymath.h">
+      <Filter>ThirdParty\raylib</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\raylib\include\rlgl.h">
+      <Filter>ThirdParty\raylib</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="ThirdParty\raylib\lib\raylib.lib">
+      <Filter>ThirdParty\raylib</Filter>
+    </Library>
+    <None Include="ThirdParty\raylib\lib\raylib.dll">
+      <Filter>ThirdParty\raylib</Filter>
+    </None>
+    <None Include="ThirdParty\raylib\lib\raylibdll.lib">
+      <Filter>ThirdParty\raylib</Filter>
+    </None>
+    <None Include="ThirdParty\raylib\README.md">
+      <Filter>ThirdParty\raylib</Filter>
+    </None>
+    <None Include="ThirdParty\raylib\LICENSE">
+      <Filter>ThirdParty\raylib</Filter>
+    </None>
   </ItemGroup>
 </Project>

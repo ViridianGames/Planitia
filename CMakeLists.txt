@@ -28,6 +28,9 @@ if(MSVC)
     add_compile_options(/wd4305)
     # Suppress CRT security warnings for standard C functions
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    # Avoid Windows.h vs raylib collisions (CloseWindow/ShowCursor/min/max).
+    # U7 never hits this because it does not compile Winsock/UPnP into game TUs.
+    add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
     # Declare C++17 for CPP source files
     add_compile_options(/std:c++17)
     # Warning level 3

@@ -109,7 +109,7 @@
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
       
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;DEBUG_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;DEBUG_MODE;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <CompileAs>Default</CompileAs>
     </ClCompile>
@@ -147,7 +147,7 @@
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <CompileAs>Default</CompileAs>
     </ClCompile>
@@ -185,7 +185,7 @@
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
       
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <CompileAs>Default</CompileAs>
     </ClCompile>
@@ -223,7 +223,7 @@
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RELEASE_MODE;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;LUA_COMPAT_5_3;MINIUPNP_STATICLIB;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <CompileAs>Default</CompileAs>
     </ClCompile>

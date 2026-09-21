@@ -3,6 +3,9 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+  </component>
   <component name="CMakePresetLoader">{
   &quot;useNewFormat&quot;: true
 }</component>
@@ -28,24 +31,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fdedb791-2604-4b97-a51b-6e2683f76003" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Redist/Planitia" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Redist/Planitia_Debug" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia_Debug" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameGlobals.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameSim.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameSim.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameTypes.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameTypes.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Geist/TooltipSystem.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Geist/TooltipSystem.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Main.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainHud.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainHud.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MultiplayerMenuState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MultiplayerMenuState.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Unit.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Unit.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/UpnpPortMap.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/UpnpPortMap.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,7 +44,7 @@
     <option name="formatViaClangd" value="false" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="261" />
+    <option name="cachedIndexableFilesCount" value="464" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Release" />
@@ -174,11 +162,6 @@
   }
 }</component>
   <component name="RunManager" selected="CMake Application.Planitia">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Planitia" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Planitia" TARGET_NAME="Planitia" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Planitia" RUN_TARGET_NAME="Planitia">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -214,7 +197,9 @@
       <option name="presentableId" value="Default" />
       <updated>1788565043845</updated>
       <workItem from="1788565044870" duration="13423000" />
-      <workItem from="1789521314198" duration="25758000" />
+      <workItem from="1789521314198" duration="28263000" />
+      <workItem from="1789942926799" duration="6000" />
+      <workItem from="1789950721702" duration="706000" />
     </task>
     <servers />
   </component>

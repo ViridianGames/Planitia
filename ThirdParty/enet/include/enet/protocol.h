@@ -37,14 +37,16 @@ typedef enum _ENetProtocolCommand
    ENET_PROTOCOL_COMMAND_SEND_UNRELIABLE_FRAGMENT = 12,
    ENET_PROTOCOL_COMMAND_COUNT              = 13,
 
-   ENET_PROTOCOL_COMMAND_MASK               = 0x0F
+   ENET_PROTOCOL_COMMAND_MASK               = 0x0F,
+
+   // Bits 6-7 of the command byte. Kept in this enum so MSVC C5287 does not
+   // reject command | flag (it warns on bitwise ops between two enum types).
+   ENET_PROTOCOL_COMMAND_FLAG_ACKNOWLEDGE = (1 << 7),
+   ENET_PROTOCOL_COMMAND_FLAG_UNSEQUENCED = (1 << 6)
 } ENetProtocolCommand;
 
 typedef enum _ENetProtocolFlag
 {
-   ENET_PROTOCOL_COMMAND_FLAG_ACKNOWLEDGE = (1 << 7),
-   ENET_PROTOCOL_COMMAND_FLAG_UNSEQUENCED = (1 << 6),
-
    ENET_PROTOCOL_HEADER_FLAG_COMPRESSED = (1 << 14),
    ENET_PROTOCOL_HEADER_FLAG_SENT_TIME  = (1 << 15),
    ENET_PROTOCOL_HEADER_FLAG_MASK       = ENET_PROTOCOL_HEADER_FLAG_COMPRESSED | ENET_PROTOCOL_HEADER_FLAG_SENT_TIME,

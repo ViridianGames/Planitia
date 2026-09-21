@@ -332,6 +332,13 @@
     <ClCompile Include="ThirdParty\miniupnpc\src\receivedata.c" />
     <ClCompile Include="ThirdParty\miniupnpc\src\addr_is_reserved.c" />
   </ItemGroup>
+  <!-- C sources must not search Source\Geist. IO.h shadows the Windows <io.h>
+       and pulls <vector> into the C translation unit (STL1003). -->
+  <ItemGroup>
+    <ClCompile Update="ThirdParty\lua\src\*.c;ThirdParty\enet\*.c;ThirdParty\miniupnpc\src\*.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\lua\src;$(ProjectDir)ThirdParty\enet\include;$(ProjectDir)ThirdParty\miniupnpc\include;$(ProjectDir)ThirdParty\miniupnpcstrings</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\GameGlobals.h" />
     <ClInclude Include="Source\GameSim.h" />

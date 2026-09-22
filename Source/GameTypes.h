@@ -61,7 +61,7 @@ inline float ManaCostFor(PlayerAction action)
 {
 	switch (action)
 	{
-	case PlayerAction::Flatten:
+	case PlayerAction::Flatten: return 0.025f;
 	case PlayerAction::Raise:
 	case PlayerAction::Lower: return 0.1f;
 	case PlayerAction::Bless:

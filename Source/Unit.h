@@ -35,14 +35,15 @@ struct Unit
 	int m_LifetimeTicks = 0; // FX powers (lightning/flamestrike/...) die when this hits 0
 	UnitState m_NextState = UnitState::Idle; // state to enter when Move arrives
 	bool m_CarryFood = false;
+	int m_FoodCarried = 0; // amount delivered on SupplyFood (blessed = 2x)
 	float m_AnimTimer = 0.0f;
 	int m_Facing = 7; // 0=SW,1=W,2=NW,3=N,4=NE,5=E,6=SE,7=S (U7 walk slots)
 
 	// Village-only fields (ignored for other types).
 	int m_FoodBucket = 0;
-	int m_VillageSize = 0; // 0 = small, 1 = medium
+	int m_VillageSize = 0; // 0 = house (4 farms), 1 = manor (8 farms)
 	int m_VillagerCount = 0;
-	bool m_HasExpanded = false; // each village may spawn at most one daughter
+	bool m_HasExpanded = false; // unused: parents may found multiple neighbors
 
 	bool IsFx() const
 	{

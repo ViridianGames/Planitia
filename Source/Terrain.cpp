@@ -647,7 +647,8 @@ void Terrain::AssignTerrainTypesFromHeights()
 		for (int z = 0; z < m_CellHeight; ++z)
 		{
 			const int existing = GetTerrainType(x, z);
-			if (existing == TT_FARMLAND || existing == TT_HOUSE)
+			if (existing == TT_FARMLAND || existing == TT_HOUSE
+				|| existing == TT_BLESSEDLAND || existing == TT_RUINEDLAND)
 				continue;
 			SetTerrainType(x, z, FindTerrainType(x, z));
 		}
@@ -663,7 +664,8 @@ void Terrain::ScrubTerrainCell(int cellX, int cellZ)
 			if (x < 0 || x >= m_CellWidth || z < 0 || z >= m_CellHeight)
 				continue;
 			const int existing = GetTerrainType(x, z);
-			if (existing == TT_FARMLAND || existing == TT_HOUSE)
+			if (existing == TT_FARMLAND || existing == TT_HOUSE
+				|| existing == TT_BLESSEDLAND || existing == TT_RUINEDLAND)
 				continue;
 			SetTerrainType(x, z, FindTerrainType(x, z)); // dirties only if type changes
 		}

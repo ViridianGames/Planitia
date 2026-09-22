@@ -59,6 +59,9 @@ private:
 	void ApplyAirPhysics(Unit& unit, float tickDt);
 	void TossWalkersInRadius(float x, float z, float radius);
 	void JiggleTerrainInRadius(float x, float z, float radius);
+	void ClearBlessedInRadius(float x, float z, float radius);
+	// If this cell belongs in a village farm ring and is flat again, set farmland.
+	void RestoreVillageFarmlandAt(int cellX, int cellZ);
 	void RegenMana(Player& player);
 	void CheckEliminations();
 	void RecountPopulation();
@@ -75,10 +78,12 @@ private:
 	void LayoutVillageMedium(int cellX, int cellZ);
 	bool VillageHasFarm(const Unit& village) const;
 	bool VillageFootprintReady(const Unit& village) const;
-	bool FindVillageFarmCell(const Unit& village, int& outX, int& outZ) const;
+	bool FindVillageFarmCell(const Unit& village, int& outX, int& outZ, int excludeWalkerId = -1) const;
+	bool IsFarmCellClaimed(int villageId, int cellX, int cellZ, int excludeWalkerId = -1) const;
 	bool FindVillageHouseCell(const Unit& village, int& outX, int& outZ) const;
 	bool FindUnevenInFootprint(const Unit& village, int& outX, int& outZ) const;
 	bool FindUnevenInExpansionSites(const Unit& village, int& outX, int& outZ) const;
+	bool HasOpenDaughterSite(const Unit& village) const;
 	bool TrySpawnDaughterVillage(Unit& village);
 	int CountTeamWalkers(int team) const;
 	int CountTeamPopulation(int team) const;

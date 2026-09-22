@@ -16,13 +16,11 @@ namespace
 {
 	constexpr float kTickDt = kSimTickMs / 1000.0f;
 	constexpr float kFlattenTarget = 2.0f;
-	constexpr float kManaCostFlatten = 0.1f;
-	constexpr float kWalkerFlattenStep = 0.05f;
 	constexpr int kFarmWorkTicks = 15;
-	constexpr int kFlattenWorkTicks = 20;
 	constexpr int kEatIntervalTicks = 150;
 	constexpr int kFoodPerTrip = 2;
-	constexpr int kMaxWalkersPerVillage = 10;
+	constexpr int kMaxWalkersHouse = 5;
+	constexpr int kMaxWalkersManor = 10;
 	constexpr int kMaxPopulation = 100;
 	constexpr float kArriveDist = 0.12f;
 
@@ -282,12 +280,20 @@ void GameSim::LayoutVillageSmall(int cellX, int cellZ)
 {
 	if (!g_Terrain)
 		return;
-	for (int i = 0; i < 3; ++i)
+	// House in the center; four farms in the cardinal directions only.
+	static const int kFarms[4][2] = {
+		{ 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+	};
+	auto placeFarm = [&](int x, int z)
 	{
-		for (int j = 0; j < 3; ++j)
-			g_Terrain->SetTerrainType(cellX + i - 1, cellZ + j - 1, TT_FARMLAND);
-	}
+		const int existing = g_Terrain->GetTerrainType(x, z);
+		if (existing == TT_BLESSEDLAND)
+			return; // never overwrite bless
+		g_Terrain->SetTerrainType(x, z, TT_FARMLAND);
+	};
 	g_Terrain->SetTerrainType(cellX, cellZ, TT_HOUSE);
+	for (const auto& d : kFarms)
+		placeFarm(cellX + d[0], cellZ + d[1]);
 	g_Terrain->MarkMeshDirty();
 }
 
@@ -295,16 +301,23 @@ void GameSim::LayoutVillageMedium(int cellX, int cellZ)
 {
 	if (!g_Terrain)
 		return;
-	for (int i = 0; i < 3; ++i)
+	// Manor: keep a single house tile; all 8 neighbors become farmland.
+	// Blessed land is preserved (still farmable at 2x yield).
+	g_Terrain->SetTerrainType(cellX, cellZ, TT_HOUSE);
+	for (int i = -1; i <= 1; ++i)
 	{
-		for (int j = 0; j < 3; ++j)
-			g_Terrain->SetTerrainType(cellX + i - 1, cellZ + j - 1, TT_HOUSE);
+		for (int j = -1; j <= 1; ++j)
+		{
+			if (i == 0 && j == 0)
+				continue;
+			const int x = cellX + i;
+			const int z = cellZ + j;
+			const int existing = g_Terrain->GetTerrainType(x, z);
+			if (existing == TT_BLESSEDLAND)
+				continue;
+			g_Terrain->SetTerrainType(x, z, TT_FARMLAND);
+		}
 	}
-	g_Terrain->SetTerrainType(cellX - 1, cellZ - 1, TT_FARMLAND);
-	g_Terrain->SetTerrainType(cellX + 1, cellZ + 1, TT_FARMLAND);
-	g_Terrain->SetTerrainType(cellX - 1, cellZ + 1, TT_FARMLAND);
-	g_Terrain->SetTerrainType(cellX + 1, cellZ - 1, TT_FARMLAND);
-	g_Terrain->SetTerrainType(cellX, cellZ, TT_FARMLAND);
 	g_Terrain->MarkMeshDirty();
 }
 
@@ -401,6 +414,31 @@ void GameSim::TickOnce()
 		UpdateUnit(*unit, kTickDt);
 	}
 
+	// Found new villages in founding order. Always prefer open pads around the
+	// oldest village; only when it has no free neighbor do we try the next, etc.
+	// (One expand per team per tick; m_DidExpandThisTick is set inside TrySpawnDaughterVillage.)
+	for (int p = 0; p < kMaxPlayers; ++p)
+	{
+		Player& player = m_Players[p];
+		if (!player.m_Active || player.m_Eliminated || player.m_DidExpandThisTick)
+			continue;
+		for (int villageId : player.m_VillageIds)
+		{
+			Unit* village = GetUnit(villageId);
+			if (!village || !village->IsAlive() || !village->IsVillage())
+				continue;
+			if (village->m_VillageSize != 1)
+				continue;
+			if (!HasOpenDaughterSite(*village))
+				continue; // surrounded / blocked — try the next oldest village
+			// Oldest medium village that still has a free pad: wait on it (don't branch
+			// from younger towns) until it can afford to found, then found here.
+			if (village->m_VillagerCount >= kMaxWalkersManor)
+				TrySpawnDaughterVillage(*village);
+			break;
+		}
+	}
+
 	for (int i = 0; i < kMaxPlayers; ++i)
 	{
 		if (m_Players[i].m_Active && !m_Players[i].m_Eliminated)
@@ -443,8 +481,8 @@ void GameSim::RegenMana(Player& player)
 {
 	const int team = static_cast<int>(&player - m_Players);
 	const int walkers = CountTeamWalkers(team);
-	// Classic feel: villagers/200 per update.
-	player.m_Mana = std::min(player.m_ManaMax, player.m_Mana + static_cast<float>(walkers) / 200.0f);
+	// Villagers / 1000 per sim tick (~1/5 of the old /200 rate).
+	player.m_Mana = std::min(player.m_ManaMax, player.m_Mana + static_cast<float>(walkers) / 1000.0f);
 }
 
 void GameSim::CheckEliminations()
@@ -505,39 +543,73 @@ bool GameSim::VillageHasFarm(const Unit& village) const
 	return false;
 }
 
-bool GameSim::FindVillageFarmCell(const Unit& village, int& outX, int& outZ) const
+bool GameSim::IsFarmCellClaimed(int villageId, int cellX, int cellZ, int excludeWalkerId) const
+{
+	for (const auto& [id, u] : m_Units)
+	{
+		if (id == excludeWalkerId || !u.IsAlive() || !u.IsWalker())
+			continue;
+		if (u.m_VillageId != villageId)
+			continue;
+		// Already working that cell.
+		if (u.m_State == UnitState::GatherFood
+			&& static_cast<int>(u.m_Pos.x) == cellX
+			&& static_cast<int>(u.m_Pos.z) == cellZ)
+			return true;
+		// En route to gather there.
+		if (u.m_State == UnitState::Move
+			&& u.m_NextState == UnitState::GatherFood
+			&& u.m_HasTarget
+			&& static_cast<int>(u.m_Target.x) == cellX
+			&& static_cast<int>(u.m_Target.z) == cellZ)
+			return true;
+	}
+	return false;
+}
+
+bool GameSim::FindVillageFarmCell(const Unit& village, int& outX, int& outZ, int excludeWalkerId) const
 {
 	if (!g_Terrain)
 		return false;
 	const int vx = CellX(village);
 	const int vz = CellZ(village);
-	for (int attempt = 0; attempt < 12; ++attempt)
+
+	auto tryType = [&](int want) -> bool
 	{
-		const int x = vx + RandOffset();
-		const int z = vz + RandOffset();
-		const int t = g_Terrain->GetTerrainType(x, z);
-		if (t == TT_FARMLAND || t == TT_BLESSEDLAND)
+		for (int attempt = 0; attempt < 12; ++attempt)
 		{
+			const int x = vx + RandOffset();
+			const int z = vz + RandOffset();
+			if (g_Terrain->GetTerrainType(x, z) != want)
+				continue;
+			if (IsFarmCellClaimed(village.m_Id, x, z, excludeWalkerId))
+				continue;
 			outX = x;
 			outZ = z;
 			return true;
 		}
-	}
-	// Deterministic fallback scan.
-	for (int i = -1; i <= 1; ++i)
-	{
-		for (int j = -1; j <= 1; ++j)
+		for (int i = -1; i <= 1; ++i)
 		{
-			const int t = g_Terrain->GetTerrainType(vx + i, vz + j);
-			if (t == TT_FARMLAND || t == TT_BLESSEDLAND)
+			for (int j = -1; j <= 1; ++j)
 			{
-				outX = vx + i;
-				outZ = vz + j;
+				const int x = vx + i;
+				const int z = vz + j;
+				if (g_Terrain->GetTerrainType(x, z) != want)
+					continue;
+				if (IsFarmCellClaimed(village.m_Id, x, z, excludeWalkerId))
+					continue;
+				outX = x;
+				outZ = z;
 				return true;
 			}
 		}
-	}
-	return false;
+		return false;
+	};
+
+	// Prefer free blessed tiles; never pick ruined.
+	if (tryType(TT_BLESSEDLAND))
+		return true;
+	return tryType(TT_FARMLAND);
 }
 
 bool GameSim::FindVillageHouseCell(const Unit& village, int& outX, int& outZ) const
@@ -597,20 +669,23 @@ bool GameSim::FindUnevenInFootprint(const Unit& village, int& outX, int& outZ) c
 		return false;
 	const int vx = CellX(village);
 	const int vz = CellZ(village);
-	for (int i = -1; i <= 1; ++i)
+	// Center, then orthogonal, then diagonal — same priority as expansion.
+	static const int kCells[9][2] = {
+		{ 0, 0 },
+		{ 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+		{ 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 },
+	};
+	for (const auto& d : kCells)
 	{
-		for (int j = -1; j <= 1; ++j)
+		const int x = vx + d[0];
+		const int z = vz + d[1];
+		if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
+			continue;
+		if (!g_Terrain->IsValidVillageTerrain(x, z))
 		{
-			const int x = vx + i;
-			const int z = vz + j;
-			if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
-				continue;
-			if (!g_Terrain->IsValidVillageTerrain(x, z))
-			{
-				outX = x;
-				outZ = z;
-				return true;
-			}
+			outX = x;
+			outZ = z;
+			return true;
 		}
 	}
 	return false;
@@ -622,31 +697,49 @@ bool GameSim::FindUnevenInExpansionSites(const Unit& village, int& outX, int& ou
 		return false;
 	const int vx = CellX(village);
 	const int vz = CellZ(village);
-	for (int i = -1; i <= 1; ++i)
+
+	// Prefer orthogonal expansion pads; diagonals only if those are already flat/blocked.
+	static const int kOrtho[4][2] = {
+		{ 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+	};
+	static const int kDiag[4][2] = {
+		{ 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 },
+	};
+	static const int kCells[9][2] = {
+		{ 0, 0 },
+		{ 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+		{ 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 },
+	};
+
+	auto scanSite = [&](int di, int dj) -> bool
 	{
-		for (int j = -1; j <= 1; ++j)
+		const int cx = vx + di * 3;
+		const int cz = vz + dj * 3;
+		for (const auto& c : kCells)
 		{
-			if (i == 0 && j == 0)
+			const int x = cx + c[0];
+			const int z = cz + c[1];
+			if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
 				continue;
-			const int cx = vx + i * 3;
-			const int cz = vz + j * 3;
-			for (int k = -1; k <= 1; ++k)
+			if (!g_Terrain->IsValidVillageTerrain(x, z))
 			{
-				for (int l = -1; l <= 1; ++l)
-				{
-					const int x = cx + k;
-					const int z = cz + l;
-					if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
-						continue;
-					if (!g_Terrain->IsValidVillageTerrain(x, z))
-					{
-						outX = x;
-						outZ = z;
-						return true;
-					}
-				}
+				outX = x;
+				outZ = z;
+				return true;
 			}
 		}
+		return false;
+	};
+
+	for (const auto& d : kOrtho)
+	{
+		if (scanSite(d[0], d[1]))
+			return true;
+	}
+	for (const auto& d : kDiag)
+	{
+		if (scanSite(d[0], d[1]))
+			return true;
 	}
 	return false;
 }
@@ -730,30 +823,10 @@ void GameSim::UpdateWalker(Unit& unit, float tickDt)
 	{
 		int fx = 0;
 		int fz = 0;
-
-		// Design: walkers flatten when necessary (god Flatten is faster). AI / red
-		// has no god powers, so they must flatten their own upgrade & expand pads.
-		// Keep farming as the default once the home pad is flat so food keeps flowing.
-		if (FindUnevenInFootprint(*village, fx, fz))
-		{
-			setMoveToCell(fx, fz, UnitState::FlattenLand);
-		}
-		else if (village->m_VillagerCount >= 5
-			&& village->m_FoodBucket >= 8
-			&& FindUnevenInExpansionSites(*village, fx, fz)
-			&& (g_vitalRNG ? g_vitalRNG->Random(3) == 0 : false))
-		{
-			// ~1/3 of idle picks prep expansion land; rest keep farming.
-			setMoveToCell(fx, fz, UnitState::FlattenLand);
-		}
-		else if (VillageHasFarm(*village) && FindVillageFarmCell(*village, fx, fz))
-		{
+		// Walkers only farm. Raising/lowering/flattening land is a god-power job
+		// so expansion pads stay for the player to prepare.
+		if (VillageHasFarm(*village) && FindVillageFarmCell(*village, fx, fz, unit.m_Id))
 			setMoveToCell(fx, fz, UnitState::GatherFood);
-		}
-		else if (FindUnevenInExpansionSites(*village, fx, fz))
-		{
-			setMoveToCell(fx, fz, UnitState::FlattenLand);
-		}
 		break;
 	}
 
@@ -771,15 +844,11 @@ void GameSim::UpdateWalker(Unit& unit, float tickDt)
 			}
 			else if (next == UnitState::SupplyFood)
 			{
-				village->m_FoodBucket += kFoodPerTrip;
+				village->m_FoodBucket += unit.m_FoodCarried;
+				unit.m_FoodCarried = 0;
 				unit.m_CarryFood = false;
 				unit.m_State = UnitState::Idle;
 				unit.m_JobTimer = 0;
-			}
-			else if (next == UnitState::FlattenLand)
-			{
-				unit.m_State = UnitState::FlattenLand;
-				unit.m_JobTimer = kFlattenWorkTicks;
 			}
 			else
 			{
@@ -797,27 +866,32 @@ void GameSim::UpdateWalker(Unit& unit, float tickDt)
 			--unit.m_JobTimer;
 			break;
 		}
+		// Yield depends on the tile underfoot when the job finishes.
+		int amount = 0;
+		if (g_Terrain)
+		{
+			const int t = g_Terrain->GetTerrainType(
+				static_cast<int>(unit.m_Pos.x), static_cast<int>(unit.m_Pos.z));
+			if (t == TT_BLESSEDLAND)
+				amount = kFoodPerTrip * 2;
+			else if (t == TT_FARMLAND)
+				amount = kFoodPerTrip;
+			// TT_RUINEDLAND and anything else: no food
+		}
+		unit.m_FoodCarried = amount;
 		int hx = 0;
 		int hz = 0;
 		FindVillageHouseCell(*village, hx, hz);
 		setMoveToCell(hx, hz, UnitState::SupplyFood);
+		unit.m_CarryFood = amount > 0; // setMoveToCell would force true for SupplyFood
 		break;
 	}
 
 	case UnitState::FlattenLand:
-	{
-		if (unit.m_JobTimer > 0)
-		{
-			const int cx = static_cast<int>(unit.m_Pos.x);
-			const int cz = static_cast<int>(unit.m_Pos.z);
-			g_Terrain->FlattenToward(cx, cz, kFlattenTarget, kWalkerFlattenStep);
-			--unit.m_JobTimer;
-			break;
-		}
+		// Legacy state — walkers no longer reshape terrain.
 		unit.m_State = UnitState::Idle;
 		unit.m_JobTimer = 0;
 		break;
-	}
 
 	case UnitState::SupplyFood:
 	{
@@ -832,94 +906,177 @@ void GameSim::UpdateWalker(Unit& unit, float tickDt)
 	}
 }
 
+bool GameSim::HasOpenDaughterSite(const Unit& village) const
+{
+	if (!g_Terrain)
+		return false;
+
+	const int vx = CellX(village);
+	const int vz = CellZ(village);
+	static const int kOrtho[4][2] = {
+		{ 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+	};
+	static const int kDiag[4][2] = {
+		{ 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 },
+	};
+
+	auto siteFree = [&](int di, int dj) -> bool
+	{
+		const int x = vx + (di * 3);
+		const int z = vz + (dj * 3);
+		if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
+			return false;
+		for (int k = x - 1; k <= x + 1; ++k)
+		{
+			for (int l = z - 1; l <= z + 1; ++l)
+			{
+				if (!g_Terrain->IsValidVillageTerrain(k, l))
+					return false;
+			}
+		}
+		for (const auto& [id, other] : m_Units)
+		{
+			(void)id;
+			if (!other.IsAlive() || !other.IsVillage())
+				continue;
+			const int ox = CellX(other);
+			const int oz = CellZ(other);
+			if (std::abs(ox - x) <= 2 && std::abs(oz - z) <= 2)
+				return false;
+		}
+		return true;
+	};
+
+	for (const auto& d : kOrtho)
+	{
+		if (siteFree(d[0], d[1]))
+			return true;
+	}
+	for (const auto& d : kDiag)
+	{
+		if (siteFree(d[0], d[1]))
+			return true;
+	}
+	return false;
+}
+
 bool GameSim::TrySpawnDaughterVillage(Unit& village)
 {
 	if (!g_Terrain || village.m_Team < 0 || village.m_Team >= kMaxPlayers)
-		return false;
-	if (village.m_HasExpanded)
 		return false;
 	Player& player = m_Players[village.m_Team];
 	if (player.m_DidExpandThisTick)
 		return false;
 
-	// One new farm per population band: 10, 20, 30... (villageCount farms => next at 10*count).
-	const int villageCount = static_cast<int>(player.m_VillageIds.size());
-	if (player.m_Population < 10 * villageCount)
+	// Founding costs 5 walkers from the parent (regen dips until pop recovers).
+	constexpr int kFoundingWalkerCost = 5;
+	if (village.m_VillagerCount < kFoundingWalkerCost)
+		return false;
+
+	// Manor at capacity (10) founds a daughter and drops back toward 5 via founding cost.
+	if (village.m_VillageSize != 1 || village.m_VillagerCount < kMaxWalkersManor)
 		return false;
 
 	const int vx = CellX(village);
 	const int vz = CellZ(village);
 
-	for (int i = -1; i <= 1; ++i)
+	// Prefer orthogonal neighbors (N/E/S/W); only use diagonals if none fit.
+	// Offsets are in 3-cell steps so 3x3 farm pads don't overlap.
+	static const int kOrtho[4][2] = {
+		{ 0, -1 }, // N
+		{ 1, 0 },  // E
+		{ 0, 1 },  // S
+		{ -1, 0 }, // W
+	};
+	static const int kDiag[4][2] = {
+		{ 1, -1 },  // NE
+		{ 1, 1 },   // SE
+		{ -1, 1 },  // SW
+		{ -1, -1 }, // NW
+	};
+
+	auto tryOffset = [&](int di, int dj) -> bool
 	{
-		for (int j = -1; j <= 1; ++j)
+		const int x = vx + (di * 3);
+		const int z = vz + (dj * 3);
+		if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
+			return false;
+
+		bool good = true;
+		for (int k = x - 1; k <= x + 1 && good; ++k)
 		{
-			if (i == 0 && j == 0)
-				continue;
-
-			const int x = vx + (i * 3);
-			const int z = vz + (j * 3);
-			if (x < 1 || z < 1 || x >= g_Terrain->m_CellWidth - 1 || z >= g_Terrain->m_CellHeight - 1)
-				continue;
-
-			bool good = true;
-			for (int k = x - 1; k <= x + 1 && good; ++k)
+			for (int l = z - 1; l <= z + 1 && good; ++l)
 			{
-				for (int l = z - 1; l <= z + 1 && good; ++l)
-				{
-					if (!g_Terrain->IsValidVillageTerrain(k, l))
-						good = false;
-				}
-			}
-			if (!good)
-				continue;
-
-			// Don't overlap existing villages' 3x3 footprints.
-			for (const auto& [id, other] : m_Units)
-			{
-				(void)id;
-				if (!other.IsAlive() || !other.IsVillage())
-					continue;
-				const int ox = CellX(other);
-				const int oz = CellZ(other);
-				if (std::abs(ox - x) <= 2 && std::abs(oz - z) <= 2)
-				{
+				if (!g_Terrain->IsValidVillageTerrain(k, l))
 					good = false;
-					break;
-				}
 			}
-			if (!good)
-				continue;
-
-			if (player.m_Population >= kMaxPopulation)
-				return false;
-
-			LayoutVillageSmall(x, z);
-			const float wx = static_cast<float>(x) + 0.5f;
-			const float wz = static_cast<float>(z) + 0.5f;
-			const int newId = SpawnUnit(UnitType::Village, village.m_Team, wx, wz);
-			if (Unit* neu = GetUnit(newId))
-			{
-				neu->m_FoodBucket = 15;
-				neu->m_VillageSize = 0;
-				neu->m_VillagerCount = 0;
-				neu->m_HasExpanded = false;
-			}
-			// Seed one walker so the new village isn't immediately eliminated.
-			const int wid = SpawnUnit(UnitType::Walker, village.m_Team, wx + 0.5f, wz + 0.5f);
-			if (Unit* w = GetUnit(wid))
-			{
-				w->m_VillageId = newId;
-				if (Unit* neu = GetUnit(newId))
-					neu->m_VillagerCount = 1;
-			}
-
-			village.m_HasExpanded = true;
-			player.m_DidExpandThisTick = true;
-			Log("Village expanded to " + std::to_string(x) + "," + std::to_string(z)
-				+ " team=" + std::to_string(village.m_Team));
-			return true;
 		}
+		if (!good)
+			return false;
+
+		// Don't overlap existing villages' 3x3 footprints.
+		for (const auto& [id, other] : m_Units)
+		{
+			(void)id;
+			if (!other.IsAlive() || !other.IsVillage())
+				continue;
+			const int ox = CellX(other);
+			const int oz = CellZ(other);
+			if (std::abs(ox - x) <= 2 && std::abs(oz - z) <= 2)
+				return false;
+		}
+
+		if (player.m_Population >= kMaxPopulation)
+			return false;
+
+		// Spend 5 parent walkers before the daughter exists.
+		{
+			std::vector<int> founderIds;
+			for (const auto& [id, u] : m_Units)
+			{
+				if (u.IsAlive() && u.IsWalker() && u.m_VillageId == village.m_Id)
+					founderIds.push_back(id);
+			}
+			std::sort(founderIds.begin(), founderIds.end());
+			if (static_cast<int>(founderIds.size()) < kFoundingWalkerCost)
+				return false;
+			for (int i = 0; i < kFoundingWalkerCost; ++i)
+				DestroyUnit(founderIds[i]);
+			village.m_VillagerCount = std::max(0, village.m_VillagerCount - kFoundingWalkerCost);
+		}
+
+		LayoutVillageSmall(x, z);
+		const float wx = static_cast<float>(x) + 0.5f;
+		const float wz = static_cast<float>(z) + 0.5f;
+		const int newId = SpawnUnit(UnitType::Village, village.m_Team, wx, wz);
+		if (Unit* neu = GetUnit(newId))
+		{
+			neu->m_FoodBucket = 15;
+			neu->m_VillageSize = 0;
+			neu->m_VillagerCount = 0;
+		}
+		// Seed one walker so the new village isn't immediately eliminated.
+		const int wid = SpawnUnit(UnitType::Walker, village.m_Team, wx + 0.5f, wz + 0.5f);
+		if (Unit* w = GetUnit(wid))
+		{
+			w->m_VillageId = newId;
+			if (Unit* neu = GetUnit(newId))
+				neu->m_VillagerCount = 1;
+		}
+
+			player.m_DidExpandThisTick = true;
+		return true;
+	};
+
+	for (const auto& d : kOrtho)
+	{
+		if (tryOffset(d[0], d[1]))
+			return true;
+	}
+	for (const auto& d : kDiag)
+	{
+		if (tryOffset(d[0], d[1]))
+			return true;
 	}
 	return false;
 }
@@ -958,7 +1115,7 @@ void GameSim::UpdateVillage(Unit& village)
 		}
 	}
 	else if (village.m_VillageSize == 0
-		&& village.m_VillagerCount < kMaxWalkersPerVillage
+		&& village.m_VillagerCount < kMaxWalkersHouse
 		&& village.m_FoodBucket >= 30
 		&& pop < kMaxPopulation)
 	{
@@ -971,7 +1128,7 @@ void GameSim::UpdateVillage(Unit& village)
 		village.m_FoodBucket = 15;
 	}
 	else if (village.m_VillageSize == 1
-		&& village.m_VillagerCount < kMaxWalkersPerVillage
+		&& village.m_VillagerCount < kMaxWalkersManor
 		&& village.m_FoodBucket >= 60
 		&& pop < kMaxPopulation)
 	{
@@ -985,8 +1142,8 @@ void GameSim::UpdateVillage(Unit& village)
 	const int vx = CellX(village);
 	const int vz = CellZ(village);
 
-	// Small -> medium when enough villagers and the 3x3 pad is flat.
-	if (village.m_VillageSize == 0 && village.m_VillagerCount > 4)
+	// House -> manor at 5 villagers (footprint must be flat).
+	if (village.m_VillageSize == 0 && village.m_VillagerCount >= kMaxWalkersHouse)
 	{
 		bool ready = true;
 		for (int i = vx - 1; i <= vx + 1 && ready; ++i)
@@ -997,20 +1154,7 @@ void GameSim::UpdateVillage(Unit& village)
 		{
 			village.m_VillageSize = 1;
 			LayoutVillageMedium(vx, vz);
-			Log("Village upgraded to medium at " + std::to_string(vx) + "," + std::to_string(vz));
 		}
-	}
-	else if (!village.m_HasExpanded
-		&& village.m_VillageSize == 1
-		&& village.m_VillagerCount >= kMaxWalkersPerVillage)
-	{
-		// At most one daughter per village; team pop gates the chain (10 -> 20 -> 30...).
-		TrySpawnDaughterVillage(village);
-	}
-	else if (village.m_VillageSize == 1 && village.m_VillagerCount < 5)
-	{
-		village.m_VillageSize = 0;
-		LayoutVillageSmall(vx, vz);
 	}
 
 	// Empty village dies.
@@ -1058,14 +1202,14 @@ void GameSim::UpdateFxUnit(Unit& unit, float tickDt)
 	}
 	else if (unit.m_Type == UnitType::Earthquake)
 	{
-		// Main job is unleveling terrain (blocks reuse until Flattened again).
-		// Light one-shot chip to enemies; keep the toss for feel.
+		// Unlevel terrain, chip enemies, clear blessed back to normal land.
 		constexpr float kQuakeRadius = 5.0f;
 		if (unit.m_LifetimeTicks == 44)
 			DamageEnemiesInRadius(unit.m_Team, unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius, unit.m_AttackPower);
 		if ((unit.m_LifetimeTicks % 2) == 0)
 		{
 			JiggleTerrainInRadius(unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius);
+			ClearBlessedInRadius(unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius);
 			TossWalkersInRadius(unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius);
 		}
 	}
@@ -1112,6 +1256,75 @@ void GameSim::JiggleTerrainInRadius(float x, float z, float radius)
 			for (int j = cz - r; j <= cz + r; ++j)
 				g_Terrain->ScrubTerrainCell(i, j);
 		g_Terrain->MarkMeshDirty();
+	}
+}
+
+void GameSim::ClearBlessedInRadius(float x, float z, float radius)
+{
+	if (!g_Terrain)
+		return;
+	const int minX = std::max(0, static_cast<int>(x - radius));
+	const int maxX = std::min(g_Terrain->m_CellWidth - 1, static_cast<int>(x + radius));
+	const int minZ = std::max(0, static_cast<int>(z - radius));
+	const int maxZ = std::min(g_Terrain->m_CellHeight - 1, static_cast<int>(z + radius));
+	const float r2 = radius * radius;
+	bool dirty = false;
+	for (int cx = minX; cx <= maxX; ++cx)
+	{
+		for (int cz = minZ; cz <= maxZ; ++cz)
+		{
+			const float dx = (static_cast<float>(cx) + 0.5f) - x;
+			const float dz = (static_cast<float>(cz) + 0.5f) - z;
+			if (dx * dx + dz * dz > r2)
+				continue;
+			if (g_Terrain->GetTerrainType(cx, cz) != TT_BLESSEDLAND)
+				continue;
+			g_Terrain->SetTerrainType(cx, cz, TT_GRASS);
+			dirty = true;
+			// If the pad is still flat, restore farmland immediately; otherwise
+			// RestoreVillageFarmlandAt will run again when the player flattens.
+			RestoreVillageFarmlandAt(cx, cz);
+		}
+	}
+	if (dirty)
+		g_Terrain->MarkMeshDirty();
+}
+
+void GameSim::RestoreVillageFarmlandAt(int cellX, int cellZ)
+{
+	if (!g_Terrain)
+		return;
+	if (!g_Terrain->IsValidVillageTerrain(cellX, cellZ))
+		return;
+
+	const int existing = g_Terrain->GetTerrainType(cellX, cellZ);
+	// Only heal plain ground back into a farm slot — leave house/bless/ruin/swamp alone.
+	if (existing != TT_GRASS && existing != TT_FLATLAND)
+		return;
+
+	for (const auto& [id, unit] : m_Units)
+	{
+		(void)id;
+		if (!unit.IsAlive() || !unit.IsVillage())
+			continue;
+		const int vx = CellX(unit);
+		const int vz = CellZ(unit);
+		const int dx = cellX - vx;
+		const int dz = cellZ - vz;
+		if (dx < -1 || dx > 1 || dz < -1 || dz > 1)
+			continue;
+		if (dx == 0 && dz == 0)
+			continue; // house tile
+		if (unit.m_VillageSize == 0)
+		{
+			// House: only the four cardinal farm slots.
+			if (std::abs(dx) + std::abs(dz) != 1)
+				continue;
+		}
+		// Manor: any of the eight neighbors.
+		g_Terrain->SetTerrainType(cellX, cellZ, TT_FARMLAND);
+		g_Terrain->MarkMeshDirty();
+		return;
 	}
 }
 
@@ -1226,8 +1439,17 @@ void GameSim::DrawUnits(const Camera3D& camera) const
 		float w = 0.4f;
 		if (unit.IsVillage())
 		{
-			h = 1.4f;
-			w = 1.0f;
+			// House = small cube; manor = large cube.
+			if (unit.m_VillageSize == 0)
+			{
+				h = 0.9f;
+				w = 0.7f;
+			}
+			else
+			{
+				h = 1.6f;
+				w = 1.2f;
+			}
 		}
 		else if (unit.m_Type == UnitType::Lightning)
 		{
@@ -1283,11 +1505,16 @@ bool GameSim::TryFlatten(int playerSlot, int cellX, int cellZ)
 	Player& player = m_Players[playerSlot];
 	if (!player.m_Active || player.m_Eliminated)
 		return false;
-	if (player.m_Mana < kManaCostFlatten)
+	const float cost = ManaCostFor(PlayerAction::Flatten);
+	if (player.m_Mana < cost)
 		return false;
 	if (g_Terrain->FlattenToward(cellX, cellZ, kFlattenTarget, 0.1f))
 	{
-		player.m_Mana -= kManaCostFlatten;
+		player.m_Mana -= cost;
+		// Quake-cleared bless (now grass) in a village ring becomes farmland again when flat.
+		for (int i = cellX - 1; i <= cellX + 1; ++i)
+			for (int j = cellZ - 1; j <= cellZ + 1; ++j)
+				RestoreVillageFarmlandAt(i, j);
 		return true;
 	}
 	return false;
@@ -1298,11 +1525,12 @@ bool GameSim::TryRaise(int playerSlot, int cellX, int cellZ)
 	if (!g_Terrain || playerSlot < 0 || playerSlot >= kMaxPlayers)
 		return false;
 	Player& player = m_Players[playerSlot];
-	if (!player.m_Active || player.m_Mana < kManaCostFlatten)
+	const float cost = ManaCostFor(PlayerAction::Raise);
+	if (!player.m_Active || player.m_Mana < cost)
 		return false;
 	if (g_Terrain->RaiseArea(cellX, cellZ, 0.1f))
 	{
-		player.m_Mana -= kManaCostFlatten;
+		player.m_Mana -= cost;
 		return true;
 	}
 	return false;
@@ -1313,11 +1541,12 @@ bool GameSim::TryLower(int playerSlot, int cellX, int cellZ)
 	if (!g_Terrain || playerSlot < 0 || playerSlot >= kMaxPlayers)
 		return false;
 	Player& player = m_Players[playerSlot];
-	if (!player.m_Active || player.m_Mana < kManaCostFlatten)
+	const float cost = ManaCostFor(PlayerAction::Lower);
+	if (!player.m_Active || player.m_Mana < cost)
 		return false;
 	if (g_Terrain->LowerArea(cellX, cellZ, 0.1f))
 	{
-		player.m_Mana -= kManaCostFlatten;
+		player.m_Mana -= cost;
 		return true;
 	}
 	return false;

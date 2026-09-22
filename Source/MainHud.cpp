@@ -7,6 +7,7 @@
 #include "Geist/Globals.h"
 #include "Geist/ResourceManager.h"
 #include "Geist/TooltipSystem.h"
+#include "Player.h"
 #include "Terrain.h"
 #include "Unit.h"
 
@@ -177,6 +178,12 @@ void MainHud::Init()
 		SetTextureFilter(*m_IconsTex, TEXTURE_FILTER_POINT);
 		SetTextureWrap(*m_IconsTex, TEXTURE_WRAP_CLAMP);
 	}
+	m_MinimapArrowTex = g_ResourceManager->GetTexture("Images/minimaparrow.png", false);
+	if (m_MinimapArrowTex && m_MinimapArrowTex->id != 0)
+	{
+		SetTextureFilter(*m_MinimapArrowTex, TEXTURE_FILTER_POINT);
+		SetTextureWrap(*m_MinimapArrowTex, TEXTURE_WRAP_CLAMP);
+	}
 	EnsureMinimap();
 }
 
@@ -189,6 +196,14 @@ void MainHud::Shutdown()
 	}
 	m_PanelTex = nullptr;
 	m_IconsTex = nullptr;
+	m_MinimapArrowTex = nullptr;
+}
+
+void MainHud::SetMinimapCamera(float lookAtX, float lookAtZ, float cameraAngleRad)
+{
+	m_MinimapLookX = lookAtX;
+	m_MinimapLookZ = lookAtZ;
+	m_MinimapCamAngle = cameraAngleRad;
 }
 
 float MainHud::PanelWidth() const
@@ -302,14 +317,16 @@ void MainHud::RebuildMinimap()
 		}
 	}
 
-	// Units / buildings as team-colored dots (villages slightly larger).
+	// Units / buildings as join-color dots (villages slightly larger).
 	const float scale = static_cast<float>(kMinimapSize) / static_cast<float>(cellsX);
 	for (const auto& [id, unit] : g_Sim.Units())
 	{
 		(void)id;
 		if (!unit.IsAlive())
 			continue;
-		const Color team = PlayerTeamColor(unit.m_Team);
+		Color team = PlayerTeamColor(unit.m_Team);
+		if (unit.m_Team >= 0 && unit.m_Team < kMaxPlayers)
+			team = g_Sim.GetPlayer(unit.m_Team).TeamColor();
 		const float px = unit.m_Pos.x * scale;
 		const float py = unit.m_Pos.z * scale;
 		const float r = unit.IsVillage() ? 2.5f : 1.5f;
@@ -432,6 +449,37 @@ void MainHud::DrawMinimap(float x, float y)
 		Rectangle{ 0, 0, static_cast<float>(kMinimapSize), -static_cast<float>(kMinimapSize) },
 		Vector2{ x, y },
 		WHITE);
+
+	// Camera look-at marker: triangle art faces South (+Z); rotate to view yaw.
+	if (m_MinimapArrowTex && m_MinimapArrowTex->id != 0 && g_Terrain)
+	{
+		const float cellsX = static_cast<float>(g_Terrain->m_CellWidth);
+		const float cellsZ = static_cast<float>(g_Terrain->m_CellHeight);
+		const float mapScaleX = static_cast<float>(kMinimapSize) / cellsX;
+		const float mapScaleZ = static_cast<float>(kMinimapSize) / cellsZ;
+		const float ax = x + m_MinimapLookX * mapScaleX;
+		const float ay = y + m_MinimapLookZ * mapScaleZ;
+
+		// Camera sits at lookAt + (sinθ, cosθ)*dist and looks toward lookAt, so
+		// view dir on XZ is (-sinθ, -cosθ). Art faces +Z (south).
+		const float fx = -std::sin(m_MinimapCamAngle);
+		const float fz = -std::cos(m_MinimapCamAngle);
+		const float rotDeg = -atan2f(fx, fz) * RAD2DEG;
+
+		const float aw = static_cast<float>(m_MinimapArrowTex->width);
+		const float ah = static_cast<float>(m_MinimapArrowTex->height);
+		constexpr float kArrowDraw = 7.5f;
+		const float scale = kArrowDraw / std::max(aw, ah);
+		const float dw = aw * scale;
+		const float dh = ah * scale;
+		DrawTexturePro(
+			*m_MinimapArrowTex,
+			Rectangle{ 0, 0, aw, ah },
+			Rectangle{ ax, ay, dw, dh },
+			Vector2{ dw * 0.5f, dh * 0.5f },
+			rotDeg,
+			WHITE);
+	}
 }
 
 void MainHud::DrawManaBar(float x, float y, float width)

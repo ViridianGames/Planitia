@@ -83,8 +83,6 @@ bool NetSession::Host(uint16_t port, int maxClients)
 		m_Status = "Hosting on port " + std::to_string(port) + " (UPnP failed - LAN/port-forward only)";
 		Log("NetSession: UPnP failed: " + m_Upnp.LastError());
 	}
-
-	Log("NetSession: " + m_Status);
 	return true;
 }
 
@@ -118,7 +116,6 @@ bool NetSession::Join(const std::string& ip, uint16_t port)
 	m_Mode = Mode::Client;
 	m_Port = port;
 	m_Status = "Connecting to " + ip + ":" + std::to_string(port);
-	Log("NetSession: " + m_Status);
 	return true;
 }
 
@@ -159,7 +156,6 @@ void NetSession::Service(PacketHandler handler)
 			if (m_Mode == Mode::Client)
 			{
 				m_Status = "Connected to host";
-				Log("NetSession: " + m_Status);
 				const auto hello = Net::PackHello("Player");
 				SendToHost(hello);
 			}
@@ -167,7 +163,6 @@ void NetSession::Service(PacketHandler handler)
 			{
 				m_Status = "Players connected: " + std::to_string(ConnectedPeerCount())
 					+ " / " + std::to_string(kMaxPlayers - 1);
-				Log("NetSession: client connected peerIndex=" + std::to_string(peerIndex));
 				if (m_OnPeerConnect)
 					m_OnPeerConnect(peerIndex);
 			}
@@ -199,7 +194,6 @@ void NetSession::Service(PacketHandler handler)
 			{
 				m_Status = "Players connected: " + std::to_string(ConnectedPeerCount())
 					+ " / " + std::to_string(kMaxPlayers - 1);
-				Log("NetSession: disconnect peerIndex=" + std::to_string(peerIndex));
 				if (m_OnPeerDisconnect)
 					m_OnPeerDisconnect(peerIndex);
 			}
@@ -247,7 +241,6 @@ void NetSession::DisconnectPeer(int peerIndex)
 		return;
 	enet_peer_disconnect_now(peer, 0);
 	enet_host_flush(m_Host);
-	Log("NetSession: force-disconnected peerIndex=" + std::to_string(peerIndex));
 }
 
 void NetSession::SendToHost(const std::vector<uint8_t>& bytes, bool reliable)

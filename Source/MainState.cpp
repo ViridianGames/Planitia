@@ -204,6 +204,7 @@ void MainState::Update()
 			m_Camera.position.y = minCamY;
 	}
 	m_Camera.target = m_LookAt;
+	m_Hud.SetMinimapCamera(m_LookAt.x, m_LookAt.z, m_CameraAngle);
 }
 
 void MainState::Draw()

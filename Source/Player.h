@@ -49,7 +49,7 @@ struct Player
 	bool m_IsHuman = false;
 	bool m_Eliminated = false;
 
-	float m_Mana = 10.0f;
+	float m_Mana = 0.0f;
 	float m_ManaMax = 100.0f;
 	float m_SpellCooldown = 0.0f; // seconds remaining before next cast
 	int m_Population = 0; // living walkers (cap for spawning)

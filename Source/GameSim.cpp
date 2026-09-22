@@ -236,7 +236,7 @@ int GameSim::SpawnUnit(UnitType type, int team, float x, float z)
 		unit.m_Speed = 0.0f;
 		unit.m_HitPoints = unit.m_MaxHitPoints = 1.0f;
 		unit.m_LifetimeTicks = 45; // ~1.5s
-		unit.m_AttackPower = 1.5f;
+		unit.m_AttackPower = 5.0f; // one-shot chip damage (see UpdateFxUnit)
 		break;
 	default:
 		break;
@@ -317,7 +317,7 @@ void GameSim::SetupPlayer(int cellX, int cellZ, int playerSlot, bool isHuman)
 	player = Player{};
 	player.m_Active = true;
 	player.m_IsHuman = isHuman;
-	player.m_Mana = 100.0f; // generous for early testing
+	player.m_Mana = 0.0f;
 
 	// Carve a flat 5x5 settlement pad (cells cell+/-2), then drop the 3x3 farm in the middle.
 	// Don't raise a hill first - that buried villages inside peaks.
@@ -1058,14 +1058,15 @@ void GameSim::UpdateFxUnit(Unit& unit, float tickDt)
 	}
 	else if (unit.m_Type == UnitType::Earthquake)
 	{
-		// Classic Planitia: jiggle verts randomly; toss walkers into the air.
-		// Do NOT carve land down into the water.
+		// Main job is unleveling terrain (blocks reuse until Flattened again).
+		// Light one-shot chip to enemies; keep the toss for feel.
 		constexpr float kQuakeRadius = 5.0f;
+		if (unit.m_LifetimeTicks == 44)
+			DamageEnemiesInRadius(unit.m_Team, unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius, unit.m_AttackPower);
 		if ((unit.m_LifetimeTicks % 2) == 0)
 		{
 			JiggleTerrainInRadius(unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius);
 			TossWalkersInRadius(unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius);
-			DamageEnemiesInRadius(unit.m_Team, unit.m_Pos.x, unit.m_Pos.z, kQuakeRadius, unit.m_AttackPower * 0.35f);
 		}
 	}
 }
@@ -1242,9 +1243,8 @@ void GameSim::DrawUnits(const Camera3D& camera) const
 		}
 		else if (unit.m_Type == UnitType::Earthquake)
 		{
-			color = Color{ 140, 100, 60, 200 };
-			h = 0.4f;
-			w = 2.0f;
+			// Terrain-only effect — no brown placeholder block.
+			continue;
 		}
 		else if (unit.m_Type == UnitType::General)
 		{

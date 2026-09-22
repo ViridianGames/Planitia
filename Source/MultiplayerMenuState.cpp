@@ -327,10 +327,7 @@ void MultiplayerMenuState::Update()
 		if (g_Net.Host(port))
 		{
 			const int pid = static_cast<int>(planitia_getpid());
-			const std::string hostLog = "runlog_host_" + std::to_string(pid) + ".txt";
-			Log("Switching log file -> " + hostLog);
-			SetLogFileName(hostLog);
-			Log("Host log started (pid " + std::to_string(pid) + ", port " + std::to_string(port) + ")");
+			SetLogFileName("runlog_host_" + std::to_string(pid) + ".txt");
 			g_Lockstep.PauseMatch("Hosting - waiting for client, then Start Match");
 			g_Lockstep.ConfigureMatch(1, 0, turnLen);
 			RefreshHostInvite();
@@ -356,7 +353,6 @@ void MultiplayerMenuState::Update()
 				AddConsoleString("Internet friends need manual UDP port forward to this PC", YELLOW);
 				AddConsoleString("Invite: " + m_HostInvite, GREEN);
 			}
-			AddConsoleString("Log: " + hostLog, Color{ 180, 200, 220, 255 });
 		}
 		else
 			AddConsoleString("Host failed: " + g_Net.LastError(), RED);
@@ -403,14 +399,9 @@ void MultiplayerMenuState::Update()
 		if (g_Net.Join(m_JoinIp, m_JoinPort))
 		{
 			const int pid = static_cast<int>(planitia_getpid());
-			const std::string clientLog = "runlog_client_" + std::to_string(pid) + ".txt";
-			Log("Switching log file -> " + clientLog);
-			SetLogFileName(clientLog);
-			Log("Client log started (pid " + std::to_string(pid)
-				+ ", joining " + m_JoinIp + ":" + std::to_string(m_JoinPort) + ")");
+			SetLogFileName("runlog_client_" + std::to_string(pid) + ".txt");
 			g_Lockstep.PauseMatch("Client - waiting for host to Start Match");
 			AddConsoleString("Joining " + m_JoinIp + ":" + std::to_string(m_JoinPort), YELLOW);
-			AddConsoleString("Log: " + clientLog, Color{ 180, 200, 220, 255 });
 		}
 		else
 			AddConsoleString("Join failed: " + g_Net.LastError(), RED);
@@ -436,7 +427,6 @@ void MultiplayerMenuState::Update()
 			return;
 		}
 		const uint32_t seed = static_cast<uint32_t>(GetTime() * 1000.0);
-		Log("UI: Start Match clicked peers=" + std::to_string(peers) + " seed=" + std::to_string(seed));
 		g_Lockstep.ConfigureMatch(peers + 1, 0, turnLen);
 		g_Lockstep.HostBroadcastStart(g_Net, seed);
 		g_Lockstep.BeginMatch(g_Sim, seed, peers + 1, 0, turnLen, peers + 1);

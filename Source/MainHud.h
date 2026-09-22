@@ -41,6 +41,9 @@ public:
 	// Minimap click -> camera jump. True once per click; fills world XZ.
 	bool ConsumeMinimapCameraJump(float& outWorldX, float& outWorldZ);
 
+	// Look-at + orbit yaw so the minimap can draw a facing arrow.
+	void SetMinimapCamera(float lookAtX, float lookAtZ, float cameraAngleRad);
+
 private:
 	void EnsureMinimap();
 	void RebuildMinimap();
@@ -74,8 +77,13 @@ private:
 	bool m_MinimapReady = false;
 	int m_MinimapRebuildTick = -1;
 
+	float m_MinimapLookX = 0.0f;
+	float m_MinimapLookZ = 0.0f;
+	float m_MinimapCamAngle = 0.0f; // radians; same as MainState::m_CameraAngle
+
 	Texture2D* m_PanelTex = nullptr;
 	Texture2D* m_IconsTex = nullptr;
+	Texture2D* m_MinimapArrowTex = nullptr;
 };
 
 #endif

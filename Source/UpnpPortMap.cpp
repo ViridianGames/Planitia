@@ -26,21 +26,6 @@ namespace
 		}
 	}
 
-	void LogDiscoveredDevices(UPNPDev* devlist)
-	{
-		int n = 0;
-		for (UPNPDev* d = devlist; d; d = d->pNext)
-		{
-			++n;
-			Log(std::string("UpnpPortMap: device[") + std::to_string(n) + "] "
-				+ (d->descURL ? d->descURL : "?")
-				+ " st=" + (d->st ? d->st : "?"));
-		}
-		if (n == 0)
-			Log("UpnpPortMap: discover returned empty device list");
-		else
-			Log("UpnpPortMap: discover found " + std::to_string(n) + " UPnP device(s)");
-	}
 }
 
 UpnpPortMap::~UpnpPortMap()
@@ -83,8 +68,6 @@ bool UpnpPortMap::OpenUdp(uint16_t externalPort, uint16_t localPort, const char*
 		return false;
 	}
 
-	LogDiscoveredDevices(devlist);
-
 	UPNPUrls urls{};
 	IGDdatas data{};
 	char lanaddr[64] = {};
@@ -92,12 +75,6 @@ bool UpnpPortMap::OpenUdp(uint16_t externalPort, uint16_t localPort, const char*
 	const int igd = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), wanaddr, sizeof(wanaddr));
 	freeUPNPDevlist(devlist);
 	devlist = nullptr;
-
-	Log(std::string("UpnpPortMap: GetValidIGD -> ") + std::to_string(igd)
-		+ " (" + IgdCodeName(igd) + ")"
-		+ " lan=" + (lanaddr[0] ? lanaddr : "?")
-		+ " wan=" + (wanaddr[0] ? wanaddr : "?")
-		+ " control=" + (urls.controlURL ? urls.controlURL : "?"));
 
 	// 1 = ideal, 2 = WAN IP private (double-NAT / CGNAT), 3 = IGD says not connected.
 	// Codes 2 and 3 still populate urls/data; try AddPortMapping anyway (matches upnpc -ignore).
@@ -108,12 +85,6 @@ bool UpnpPortMap::OpenUdp(uint16_t externalPort, uint16_t localPort, const char*
 		Log("UpnpPortMap: " + m_LastError);
 		FreeUPNPUrls(&urls);
 		return false;
-	}
-
-	if (igd >= 3)
-	{
-		Log(std::string("UpnpPortMap: proceeding despite GetValidIGD=") + std::to_string(igd)
-			+ " (" + IgdCodeName(igd) + ")");
 	}
 
 	m_LanIp = lanaddr;
@@ -138,8 +109,7 @@ bool UpnpPortMap::OpenUdp(uint16_t externalPort, uint16_t localPort, const char*
 	else
 		m_ExternalIp.clear();
 
-	Log("UpnpPortMap: external IP query rc=" + std::to_string(ipRc)
-		+ " ext=" + (m_ExternalIp.empty() ? "?" : m_ExternalIp));
+	(void)ipRc;
 
 	char extPortStr[16];
 	char inPortStr[16];
@@ -173,10 +143,6 @@ bool UpnpPortMap::OpenUdp(uint16_t externalPort, uint16_t localPort, const char*
 	m_Mapped = true;
 	m_ExternalPort = externalPort;
 	m_LocalPort = localPort;
-	Log("UpnpPortMap: mapped UDP " + std::to_string(externalPort)
-		+ " -> " + m_LanIp + ":" + std::to_string(localPort)
-		+ " public=" + (m_ExternalIp.empty() ? "?" : m_ExternalIp)
-		+ " igdCode=" + std::to_string(igd));
 
 	FreeUPNPUrls(&urls);
 	return true;
@@ -204,10 +170,7 @@ void UpnpPortMap::Close()
 			extPortStr,
 			"UDP",
 			nullptr);
-		if (rc != UPNPCOMMAND_SUCCESS)
-			Log(std::string("UpnpPortMap: DeletePortMapping failed: ") + strupnperror(rc));
-		else
-			Log("UpnpPortMap: removed UDP mapping for port " + std::to_string(m_ExternalPort));
+		(void)rc;
 	}
 
 	m_Mapped = false;

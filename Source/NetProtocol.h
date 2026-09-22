@@ -20,16 +20,20 @@ namespace Net
 {
 	constexpr uint32_t kMagic = 0x504C4E54u; // 'PLNT'
 
-	// Multiplayer compatibility version. Host and every client must match
-	// before a seat is granted. Bump when the wire format or lockstep rules
-	// change incompatibly.
-	constexpr uint16_t kGameVersion = 4;
-	constexpr uint16_t kProtocolVersion = kGameVersion; // Hello/Welcome field
+	// Display version: major.minor.patch  (e.g. "0.1.5").
+	// Only the patch digit is the multiplayer compatibility key — bump patch
+	// whenever the wire format or lockstep rules change incompatibly.
+	constexpr uint16_t kVersionMajor = 0;
+	constexpr uint16_t kVersionMinor = 1;
+	constexpr uint16_t kVersionPatch = 5;
+	constexpr uint16_t kProtocolVersion = kVersionPatch; // Hello/Welcome field
 	constexpr uint8_t kChannelReliable = 0;
 
 	inline std::string VersionLabel()
 	{
-		return "v" + std::to_string(kGameVersion);
+		return std::to_string(kVersionMajor) + "."
+			+ std::to_string(kVersionMinor) + "."
+			+ std::to_string(kVersionPatch);
 	}
 
 	enum class PacketType : uint8_t
@@ -150,7 +154,7 @@ namespace Net
 	}
 
 	// theirVersion = what the peer sent; hostVersion = what we require.
-	inline std::vector<uint8_t> PackVersionReject(uint16_t theirVersion, uint16_t hostVersion = kGameVersion)
+	inline std::vector<uint8_t> PackVersionReject(uint16_t theirVersion, uint16_t hostVersion = kProtocolVersion)
 	{
 		std::vector<uint8_t> b;
 		AppendU32(b, kMagic);

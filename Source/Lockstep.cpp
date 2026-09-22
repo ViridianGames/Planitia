@@ -158,7 +158,6 @@ void LockstepController::OnPeerHelloAsHost(int peerIndex, const std::string& nam
 	net.SendToPeer(peerIndex, Net::PackWelcome(w));
 	m_Status = display + " joined as " + PlayerColorName(m_SlotColors[static_cast<size_t>(slot)])
 		+ " (slot " + std::to_string(slot) + ")";
-	Log("Lockstep: " + m_Status + " (peer " + std::to_string(peerIndex) + ")");
 }
 
 void LockstepController::OnPeerDisconnectedAsHost(int peerIndex)
@@ -178,8 +177,6 @@ void LockstepController::OnPeerDisconnectedAsHost(int peerIndex)
 	}
 	m_PeerToSlot[static_cast<size_t>(peerIndex)] = -1;
 	m_Status = name + (colorName.empty() ? "" : (" (" + colorName + ")")) + " left";
-	Log("Lockstep: " + m_Status + " (peer " + std::to_string(peerIndex)
-		+ ", freed slot " + std::to_string(slot) + ")");
 }
 
 uint32_t LockstepController::AssignedSlotForPeer(int peerIndex) const
@@ -249,7 +246,6 @@ void LockstepController::HostBroadcastStart(NetSession& net, uint32_t mapSeed)
 		s.colors[i] = static_cast<uint8_t>(m_SlotColors[static_cast<size_t>(i)]);
 	net.Broadcast(Net::PackStartMatch(s));
 	m_Status = "StartMatch broadcast seed=" + std::to_string(mapSeed);
-	Log("Lockstep: " + m_Status + " players=" + std::to_string(numPlayers));
 }
 
 void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlayers, int localSlot, uint16_t turnLength, int inputPlayers)
@@ -283,11 +279,6 @@ void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlaye
 	m_LastTurnBundle.clear();
 	m_LastTurnBundleTurn = UINT32_MAX;
 	m_Status = "Match running";
-	Log("Lockstep: BeginMatch seed=" + std::to_string(mapSeed)
-		+ " simPlayers=" + std::to_string(simPlayers)
-		+ " inputPlayers=" + std::to_string(inputPlayers)
-		+ " localSlot=" + std::to_string(localSlot)
-		+ " turnLen=" + std::to_string(turnLength));
 }
 
 void LockstepController::SubmitLocalAction(PlayerAction action, int cellX, int cellZ, uint16_t extra)
@@ -376,16 +367,16 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 			if (!Net::ReadU8(p, end, ch)) break;
 			name.push_back(static_cast<char>(ch));
 		}
-		if (protocol != Net::kGameVersion)
+		if (protocol != Net::kProtocolVersion)
 		{
 			const std::string msg = "Rejected " + (name.empty() ? std::string("client") : name)
-				+ ": version mismatch (theirs " + std::to_string(protocol)
-				+ ", ours " + std::to_string(Net::kGameVersion) + ")";
+				+ ": version mismatch (theirs patch " + std::to_string(protocol)
+				+ ", ours " + Net::VersionLabel() + ")";
 			Log("Lockstep: " + msg);
 			m_Status = msg;
 			m_PendingNetError = true;
 			m_PendingNetErrorMsg = msg;
-			net.SendToPeer(peerIndex, Net::PackVersionReject(protocol, Net::kGameVersion));
+			net.SendToPeer(peerIndex, Net::PackVersionReject(protocol, Net::kProtocolVersion));
 			net.DisconnectPeer(peerIndex);
 			break;
 		}
@@ -400,7 +391,7 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		if (!Net::ReadU16(p, end, hostVer)) break;
 		(void)theirs;
 		const std::string msg = "Join failed: version mismatch (you "
-			+ Net::VersionLabel() + ", host v" + std::to_string(hostVer) + ")";
+			+ Net::VersionLabel() + ", host patch " + std::to_string(hostVer) + ")";
 		Log("Lockstep: " + msg);
 		m_Status = msg;
 		m_PendingNetError = true;
@@ -415,9 +406,9 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		uint8_t slot = 0, maxP = 0, color = 0;
 		uint16_t port = 0, turnLen = 0;
 		if (!Net::ReadU16(p, end, protocol)) break;
-		if (protocol != Net::kGameVersion)
+		if (protocol != Net::kProtocolVersion)
 		{
-			const std::string msg = "Join failed: host version v" + std::to_string(protocol)
+			const std::string msg = "Join failed: host patch " + std::to_string(protocol)
 				+ " != local " + Net::VersionLabel();
 			Log("Lockstep: " + msg);
 			m_Status = msg;
@@ -440,7 +431,6 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		}
 		const char* cname = PlayerColorName(static_cast<PlayerColorId>(color));
 		m_Status = std::string("You are ") + cname + " (slot " + std::to_string(slot) + ")";
-		Log("Lockstep: " + m_Status);
 		m_PendingColorNotify = true;
 		m_PendingColorName = cname;
 		break;
@@ -466,7 +456,6 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		m_PendingStartTurnLen = turnLen;
 		m_HasPendingStart = true;
 		m_Status = "StartMatch received";
-		Log("Lockstep: StartMatch seed=" + std::to_string(seed));
 		break;
 	}
 
@@ -550,11 +539,7 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		if (turn < m_Turn)
 			break; // already applied (retransmit)
 		if (turn > m_Turn)
-		{
-			Log("Lockstep: TurnBundle for future turn " + std::to_string(turn)
-				+ " (local " + std::to_string(m_Turn) + ")");
 			break;
-		}
 
 		ApplyTurnBundlePayload(turn, numP, p, end);
 		m_PendingTurnBundle = true;
@@ -676,16 +661,6 @@ void LockstepController::AdvanceTurn(NetSession& net, GameSim& sim)
 	// Pace next turn to real time (turnLength ticks x 33ms).
 	m_NextAdvanceEarliest = GetTime() + (static_cast<double>(m_TurnLength) * (kSimTickMs / 1000.0));
 
-	// Don't spam the log every turn - every 30 turns (~1s) is enough.
-	if ((executedTurn % 30u) == 0u)
-	{
-		Log("Lockstep: checksum turn=" + std::to_string(executedTurn)
-			+ " hash=" + std::to_string(sum)
-			+ " units=" + std::to_string(sim.Units().size())
-			+ " simTick=" + std::to_string(sim.Tick())
-			+ " slot=" + std::to_string(m_LocalSlot));
-	}
-
 	// Checksums every 30 turns - enough for desync detection without flooding ENet.
 	if ((executedTurn % 30u) == 0u)
 	{
@@ -771,11 +746,7 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 			m_Commands[static_cast<size_t>(i)] = noop;
 			filled = true;
 		}
-		if (filled)
-		{
-			Log("Lockstep: stall recovery - filled missing cmds with no-ops at turn "
-				+ std::to_string(m_Turn));
-		}
+		(void)filled;
 	}
 
 	// Host / offline: wait for all cmds AND wall-clock turn duration.

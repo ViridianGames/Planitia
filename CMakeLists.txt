@@ -219,6 +219,7 @@ set(SOURCES
 
         Source/GameGlobals.cpp
         Source/GameSim.cpp
+        Source/GodPowerCursor.cpp
         Source/LanAddress.cpp
         Source/Lockstep.cpp
         Source/Main.cpp

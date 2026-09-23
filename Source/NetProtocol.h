@@ -25,7 +25,7 @@ namespace Net
 	// whenever the wire format or lockstep rules change incompatibly.
 	constexpr uint16_t kVersionMajor = 0;
 	constexpr uint16_t kVersionMinor = 1;
-	constexpr uint16_t kVersionPatch = 5;
+	constexpr uint16_t kVersionPatch = 7;
 	constexpr uint16_t kProtocolVersion = kVersionPatch; // Hello/Welcome field
 	constexpr uint8_t kChannelReliable = 0;
 
@@ -67,7 +67,8 @@ namespace Net
 		uint8_t assignedSlot = 0;
 		uint8_t maxPlayers = kMaxPlayers;
 		uint16_t port = 43000;
-		uint16_t turnLength = 1;
+		uint16_t turnLength = 2;
+		uint16_t inputDelay = 2; // schedule cmds this many turns ahead
 		uint8_t assignedColor = 0; // PlayerColorId
 	};
 
@@ -76,7 +77,8 @@ namespace Net
 		uint32_t mapSeed = 0;
 		uint8_t numPlayers = 2;
 		uint8_t localHint = 0; // ignored by clients; host's slot is 0
-		uint16_t turnLength = 1;
+		uint16_t turnLength = 2;
+		uint16_t inputDelay = 2;
 		uint8_t colors[kMaxPlayers] = { 0, 1, 2, 3 }; // PlayerColorId per slot
 	};
 
@@ -149,6 +151,7 @@ namespace Net
 		AppendU8(b, w.maxPlayers);
 		AppendU16(b, w.port);
 		AppendU16(b, w.turnLength);
+		AppendU16(b, w.inputDelay);
 		AppendU8(b, w.assignedColor);
 		return b;
 	}
@@ -173,6 +176,7 @@ namespace Net
 		AppendU8(b, s.numPlayers);
 		AppendU8(b, s.localHint);
 		AppendU16(b, s.turnLength);
+		AppendU16(b, s.inputDelay);
 		for (int i = 0; i < kMaxPlayers; ++i)
 			AppendU8(b, s.colors[i]);
 		return b;

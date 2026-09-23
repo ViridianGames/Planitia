@@ -144,6 +144,21 @@ int GameSim::CountTeamWalkers(int team) const
 	return n;
 }
 
+// Living followers: walkers + army + general. Villages alone do not keep you alive.
+int GameSim::CountTeamSurvivors(int team) const
+{
+	int n = 0;
+	for (const auto& [id, unit] : m_Units)
+	{
+		(void)id;
+		if (!unit.IsAlive() || unit.m_Team != team)
+			continue;
+		if (unit.IsWalker() || unit.IsMilitary())
+			++n;
+	}
+	return n;
+}
+
 int GameSim::CountTeamPopulation(int team) const
 {
 	// Walkers + archers/swordsmen/barbarians. General/Hero excluded.
@@ -494,11 +509,20 @@ void GameSim::CheckEliminations()
 	{
 		if (!m_Players[p].m_Active || m_Players[p].m_Eliminated)
 			continue;
-		if (CountTeamWalkers(p) == 0)
+		// Must use survivors (walkers + military), not walkers alone — converting
+		// your last peasants into troops used to wipe you while the army lived.
+		if (CountTeamSurvivors(p) > 0)
+			continue;
+
+		m_Players[p].m_Eliminated = true;
+		// Empty houses still drew as team dots and looked like "1 villager left".
+		for (auto& [id, unit] : m_Units)
 		{
-			m_Players[p].m_Eliminated = true;
-			Log("Player " + std::to_string(p) + " eliminated (no walkers).");
+			(void)id;
+			if (unit.IsAlive() && unit.IsVillage() && unit.m_Team == p)
+				DestroyUnit(unit.m_Id);
 		}
+		Log("Player " + std::to_string(p) + " eliminated (no survivors).");
 	}
 
 	int alive = 0;
@@ -521,7 +545,7 @@ void GameSim::CheckEliminations()
 		if (m_WinnerSlot >= 0)
 			Log("Match over - winner slot " + std::to_string(m_WinnerSlot));
 		else
-			Log("Match over - draw (no walkers left).");
+			Log("Match over - draw (no survivors left).");
 	}
 }
 
@@ -1157,11 +1181,20 @@ void GameSim::UpdateVillage(Unit& village)
 		}
 	}
 
-	// Empty village dies.
-	if (village.m_VillagerCount <= 0)
+	// Empty village dies — use a live count, not stale m_VillagerCount (which is only
+	// refreshed in RecountPopulation at end-of-tick). A stale 0 would demolish the
+	// house while peasants still lived; next tick they'd orphan-die and false-eliminate.
 	{
-		DestroyUnit(village.m_Id);
-		Log("Village destroyed (no villagers) team=" + std::to_string(village.m_Team));
+		int living = 0;
+		for (const auto& [wid, walker] : m_Units)
+		{
+			(void)wid;
+			if (walker.IsAlive() && walker.IsWalker() && walker.m_VillageId == village.m_Id)
+				++living;
+		}
+		village.m_VillagerCount = living;
+		if (living <= 0)
+			DestroyUnit(village.m_Id);
 	}
 }
 

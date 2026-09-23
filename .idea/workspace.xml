@@ -32,12 +32,20 @@
   <component name="ChangeListManager">
     <list default="true" id="fdedb791-2604-4b97-a51b-6e2683f76003" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Planitia.vcxproj" beforeDir="false" afterPath="$PROJECT_DIR$/Planitia.vcxproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Planitia.vcxproj.filters" beforeDir="false" afterPath="$PROJECT_DIR$/Planitia.vcxproj.filters" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Redist/Planitia" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Redist/Planitia_Debug" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia_Debug" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/GameGlobals.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/GameSim.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/GameSim.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameTypes.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameTypes.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Terrain.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Terrain.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Unit.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Unit.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Geist/Engine.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Geist/Engine.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Geist/Engine.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Geist/Engine.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Lockstep.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Lockstep.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/MainState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/MainState.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -171,6 +179,11 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="enet" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Planitia" TARGET_NAME="enet" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -206,7 +219,7 @@
       <workItem from="1789950721702" duration="706000" />
       <workItem from="1790029734504" duration="11000" />
       <workItem from="1790034244917" duration="2345000" />
-      <workItem from="1790038364063" duration="3856000" />
+      <workItem from="1790038364063" duration="9782000" />
     </task>
     <servers />
   </component>

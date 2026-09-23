@@ -2,6 +2,8 @@
 
 #include "GameSim.h"
 #include "GameTypes.h"
+#include "Geist/Engine.h"
+#include "Geist/Globals.h"
 #include "Geist/Logging.h"
 #include "Geist/RNG.h"
 #include "Terrain.h"
@@ -29,6 +31,8 @@ void LockstepController::ResetOffline(int localSlot)
 	m_LocalSubmitted = false;
 	m_Status = "Offline lockstep";
 	m_Commands.fill(std::nullopt);
+	for (auto& m : m_CmdsByTurn)
+		m.clear();
 	m_PeerToSlot.fill(-1);
 	m_SlotNames.fill({});
 	m_SlotNames[0] = "Host";
@@ -44,25 +48,30 @@ void LockstepController::ResetOffline(int localSlot)
 	m_NextAdvanceEarliest = 0.0;
 	m_NextCmdResendTime = 0.0;
 	m_NextBundleResendTime = 0.0;
+	m_NetworkWaitStart = -1.0;
 	m_LastTurnBundle.clear();
 	m_LastTurnBundleTurn = UINT32_MAX;
 	m_HasEarlyTurnBundle = false;
 	m_EarlyBundlePayload.clear();
 }
 
-void LockstepController::ConfigureMatch(int numPlayers, int localSlot, uint16_t turnLength)
+void LockstepController::ConfigureMatch(int numPlayers, int localSlot, uint16_t turnLength, uint16_t inputDelay)
 {
 	m_NumPlayers = std::clamp(numPlayers, 1, kMaxPlayers);
 	m_LocalSlot = std::clamp(localSlot, 0, kMaxPlayers - 1);
 	m_TurnLength = std::max<uint16_t>(1, turnLength);
+	m_InputDelay = std::max<uint16_t>(0, inputDelay);
 	m_Turn = 0;
 	m_Desynced = false;
 	m_LocalSubmitted = false;
 	m_Commands.fill(std::nullopt);
+	for (auto& m : m_CmdsByTurn)
+		m.clear();
 	m_LastChecksumTurn = UINT32_MAX;
 	m_LastLocalChecksum = 0;
 	m_HasLocalChecksum = false;
-	m_Status = "Match configured (" + std::to_string(m_NumPlayers) + "p, turnLen=" + std::to_string(m_TurnLength) + ")";
+	m_Status = "Match configured (" + std::to_string(m_NumPlayers) + "p, turnLen="
+		+ std::to_string(m_TurnLength) + ", delay=" + std::to_string(m_InputDelay) + ")";
 }
 
 void LockstepController::PauseMatch(const std::string& reason)
@@ -154,6 +163,7 @@ void LockstepController::OnPeerHelloAsHost(int peerIndex, const std::string& nam
 	w.maxPlayers = kMaxPlayers;
 	w.port = net.Port();
 	w.turnLength = static_cast<uint16_t>(m_TurnLength);
+	w.inputDelay = static_cast<uint16_t>(m_InputDelay);
 	w.assignedColor = static_cast<uint8_t>(m_SlotColors[static_cast<size_t>(slot)]);
 	net.SendToPeer(peerIndex, Net::PackWelcome(w));
 	m_Status = display + " joined as " + PlayerColorName(m_SlotColors[static_cast<size_t>(slot)])
@@ -242,17 +252,21 @@ void LockstepController::HostBroadcastStart(NetSession& net, uint32_t mapSeed)
 	s.numPlayers = static_cast<uint8_t>(numPlayers);
 	s.localHint = 0;
 	s.turnLength = static_cast<uint16_t>(m_TurnLength);
+	s.inputDelay = static_cast<uint16_t>(m_InputDelay);
 	for (int i = 0; i < kMaxPlayers; ++i)
 		s.colors[i] = static_cast<uint8_t>(m_SlotColors[static_cast<size_t>(i)]);
 	net.Broadcast(Net::PackStartMatch(s));
 	m_Status = "StartMatch broadcast seed=" + std::to_string(mapSeed);
 }
 
-void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlayers, int localSlot, uint16_t turnLength, int inputPlayers)
+void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlayers, int localSlot, uint16_t turnLength, int inputPlayers, uint16_t inputDelay)
 {
 	if (inputPlayers < 0)
 		inputPlayers = simPlayers;
-	ConfigureMatch(inputPlayers, localSlot, turnLength);
+	// Offline / single-input: no peer pipeline needed — keep controls snappy.
+	if (inputPlayers <= 1)
+		inputDelay = 0;
+	ConfigureMatch(inputPlayers, localSlot, turnLength, inputDelay);
 	// Offline / local: fixed colors by slot if not already assigned from lobby.
 	if (inputPlayers <= 1)
 	{
@@ -267,6 +281,8 @@ void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlaye
 	m_Turn = 0;
 	m_LocalSubmitted = false;
 	m_Commands.fill(std::nullopt);
+	for (auto& m : m_CmdsByTurn)
+		m.clear();
 	m_EarlyCommands.clear();
 	m_PendingTurnBundle = false;
 	m_HasPendingAction = false;
@@ -276,6 +292,7 @@ void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlaye
 	m_NextAdvanceEarliest = 0.0;
 	m_NextCmdResendTime = 0.0;
 	m_NextBundleResendTime = 0.0;
+	m_NetworkWaitStart = -1.0;
 	m_LastTurnBundle.clear();
 	m_LastTurnBundleTurn = UINT32_MAX;
 	m_Status = "Match running";
@@ -286,10 +303,9 @@ void LockstepController::SubmitLocalAction(PlayerAction action, int cellX, int c
 	if (!m_MatchRunning || m_Desynced)
 		return;
 
-	// M1: command executes on the current turn barrier (no extra schedule delay).
-	// turnLength still controls how many sim ticks run once the barrier opens.
+	// Schedule for turn N+inputDelay so the barrier can pipeline over the network.
 	Net::PlayerCommand cmd{};
-	cmd.turn = m_Turn;
+	cmd.turn = m_Turn + static_cast<uint32_t>(m_InputDelay);
 	cmd.playerSlot = static_cast<uint8_t>(m_LocalSlot);
 	cmd.action = static_cast<uint8_t>(action);
 	cmd.cellX = static_cast<int16_t>(cellX);
@@ -307,39 +323,94 @@ void LockstepController::BroadcastOrSendCommand(const Net::PlayerCommand& cmd, N
 		net.SendToHost(Net::PackPlayerCommand(cmd));
 }
 
+void LockstepController::StoreCommand(const Net::PlayerCommand& cmd)
+{
+	if (cmd.playerSlot >= kMaxPlayers)
+		return;
+	if (cmd.turn < m_Turn)
+		return; // late
+	m_CmdsByTurn[cmd.playerSlot][cmd.turn] = cmd;
+	if (cmd.turn == m_Turn)
+		m_Commands[cmd.playerSlot] = cmd;
+}
+
+bool LockstepController::HaveCommand(int slot, uint32_t turn) const
+{
+	if (slot < 0 || slot >= kMaxPlayers)
+		return false;
+	return m_CmdsByTurn[static_cast<size_t>(slot)].find(turn)
+		!= m_CmdsByTurn[static_cast<size_t>(slot)].end();
+}
+
+Net::PlayerCommand LockstepController::GetCommand(int slot, uint32_t turn) const
+{
+	Net::PlayerCommand noop{};
+	noop.turn = turn;
+	noop.playerSlot = static_cast<uint8_t>(slot);
+	noop.action = Net::kActionNone;
+	if (slot < 0 || slot >= kMaxPlayers)
+		return noop;
+	const auto& map = m_CmdsByTurn[static_cast<size_t>(slot)];
+	const auto it = map.find(turn);
+	if (it == map.end())
+		return noop;
+	return it->second;
+}
+
+void LockstepController::PruneOldCommands()
+{
+	for (auto& map : m_CmdsByTurn)
+	{
+		for (auto it = map.begin(); it != map.end(); )
+		{
+			if (it->first < m_Turn)
+				it = map.erase(it);
+			else
+				++it;
+		}
+	}
+}
+
 void LockstepController::EnsureLocalCommandSubmitted(NetSession& net)
 {
 	if (!m_MatchRunning || m_Desynced)
 		return;
 
+	const int local = m_LocalSlot;
+
+	// Flush newest player intent onto turn N+delay (may overwrite prior intent for that turn).
+	if (m_HasPendingAction)
+	{
+		Net::PlayerCommand future = m_PendingAction;
+		future.turn = m_Turn + static_cast<uint32_t>(m_InputDelay);
+		future.playerSlot = static_cast<uint8_t>(local);
+		StoreCommand(future);
+		BroadcastOrSendCommand(future, net);
+		m_HasPendingAction = false;
+	}
+
+	// Ensure we have a command for the turn about to execute (noop if nothing was scheduled).
 	if (!m_LocalSubmitted)
 	{
-		Net::PlayerCommand cmd{};
-		cmd.turn = m_Turn;
-		cmd.playerSlot = static_cast<uint8_t>(m_LocalSlot);
-		if (m_HasPendingAction)
+		if (!HaveCommand(local, m_Turn))
 		{
-			cmd = m_PendingAction;
-			cmd.turn = m_Turn;
-			cmd.playerSlot = static_cast<uint8_t>(m_LocalSlot);
-			m_HasPendingAction = false;
+			Net::PlayerCommand noop{};
+			noop.turn = m_Turn;
+			noop.playerSlot = static_cast<uint8_t>(local);
+			noop.action = Net::kActionNone;
+			StoreCommand(noop);
 		}
-		else
-		{
-			cmd.action = Net::kActionNone;
-		}
-
-		m_Commands[static_cast<size_t>(m_LocalSlot)] = cmd;
+		m_Commands[static_cast<size_t>(local)] = GetCommand(local, m_Turn);
 		m_LocalSubmitted = true;
 		m_NextCmdResendTime = 0.0; // send immediately
 	}
 
-	// Retransmit at ~10Hz until the barrier opens (avoid flooding ENet every frame).
-	if (m_Commands[static_cast<size_t>(m_LocalSlot)].has_value()
+	// Retransmit current-turn cmd at ~10Hz until the barrier opens.
+	if (m_Commands[static_cast<size_t>(local)].has_value()
 		&& !AllCommandsReady()
 		&& GetTime() >= m_NextCmdResendTime)
 	{
-		BroadcastOrSendCommand(*m_Commands[static_cast<size_t>(m_LocalSlot)], net);
+		BroadcastOrSendCommand(*m_Commands[static_cast<size_t>(local)], net);
 		m_NextCmdResendTime = GetTime() + 0.1;
 	}
 }
@@ -421,9 +492,12 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		if (!Net::ReadU8(p, end, maxP)) break;
 		if (!Net::ReadU16(p, end, port)) break;
 		if (!Net::ReadU16(p, end, turnLen)) break;
+		uint16_t inputDelay = 2;
+		if (!Net::ReadU16(p, end, inputDelay)) break;
 		if (!Net::ReadU8(p, end, color)) break;
 		m_LocalSlot = slot;
 		m_TurnLength = turnLen;
+		m_InputDelay = inputDelay;
 		if (slot < kMaxPlayers)
 		{
 			m_SlotColors[static_cast<size_t>(slot)] = static_cast<PlayerColorId>(color);
@@ -445,6 +519,8 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		if (!Net::ReadU8(p, end, numP)) break;
 		if (!Net::ReadU8(p, end, hint)) break;
 		if (!Net::ReadU16(p, end, turnLen)) break;
+		uint16_t inputDelay = 2;
+		if (!Net::ReadU16(p, end, inputDelay)) break;
 		for (int i = 0; i < kMaxPlayers; ++i)
 		{
 			uint8_t c = static_cast<uint8_t>(i);
@@ -454,6 +530,7 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 		m_PendingStartSeed = seed;
 		m_PendingStartPlayers = numP;
 		m_PendingStartTurnLen = turnLen;
+		m_PendingStartInputDelay = inputDelay;
 		m_HasPendingStart = true;
 		m_Status = "StartMatch received";
 		break;
@@ -488,8 +565,7 @@ void LockstepController::OnNetworkPacket(Net::PacketType type, const uint8_t* da
 			break;
 		}
 
-		if (cmd.turn == m_Turn)
-			m_Commands[cmd.playerSlot] = cmd;
+		StoreCommand(cmd);
 		break;
 	}
 
@@ -555,7 +631,7 @@ bool LockstepController::AllCommandsReady() const
 {
 	for (int i = 0; i < m_NumPlayers; ++i)
 	{
-		if (!m_Commands[static_cast<size_t>(i)].has_value())
+		if (!HaveCommand(i, m_Turn))
 			return false;
 	}
 	return true;
@@ -574,7 +650,10 @@ void LockstepController::ApplyTurnBundlePayload(uint32_t turn, uint8_t numP, con
 		if (!Net::ReadI16(p, end, cmd.cellZ)) break;
 		if (!Net::ReadU16(p, end, cmd.extra)) break;
 		if (cmd.playerSlot < kMaxPlayers)
+		{
 			m_Commands[cmd.playerSlot] = cmd;
+			StoreCommand(cmd);
+		}
 	}
 }
 
@@ -640,11 +719,16 @@ void LockstepController::AdvanceTurn(NetSession& net, GameSim& sim)
 	// Apply commands in slot order.
 	for (int i = 0; i < m_NumPlayers; ++i)
 	{
-		const auto& cmd = m_Commands[static_cast<size_t>(i)];
-		if (!cmd) continue;
-		if (cmd->action == Net::kActionNone)
+		Net::PlayerCommand c{};
+		if (HaveCommand(i, executedTurn))
+			c = GetCommand(i, executedTurn);
+		else if (m_Commands[static_cast<size_t>(i)].has_value())
+			c = *m_Commands[static_cast<size_t>(i)];
+		else
 			continue;
-		sim.ApplyPlayerCommand(static_cast<PlayerAction>(cmd->action), cmd->playerSlot, cmd->cellX, cmd->cellZ, cmd->extra);
+		if (c.action == Net::kActionNone)
+			continue;
+		sim.ApplyPlayerCommand(static_cast<PlayerAction>(c.action), c.playerSlot, c.cellX, c.cellZ, c.extra);
 	}
 
 	for (int t = 0; t < m_TurnLength; ++t)
@@ -675,21 +759,41 @@ void LockstepController::AdvanceTurn(NetSession& net, GameSim& sim)
 	m_LocalSubmitted = false;
 	m_Commands.fill(std::nullopt);
 	m_PendingTurnBundle = false;
+	PruneOldCommands();
+	// Promote any already-received cmds for the new current turn into m_Commands.
+	for (int i = 0; i < m_NumPlayers; ++i)
+	{
+		if (HaveCommand(i, m_Turn))
+			m_Commands[static_cast<size_t>(i)] = GetCommand(i, m_Turn);
+	}
 	m_Status = "Turn " + std::to_string(m_Turn);
 }
 
 void LockstepController::Update(NetSession& net, GameSim& sim)
 {
+	auto reportNetworkWait = [&](bool waitingOnPeers)
+	{
+		if (!g_Engine)
+			return;
+		if (!waitingOnPeers)
+		{
+			m_NetworkWaitStart = -1.0;
+			g_Engine->m_lastNetworkInMS = 0;
+			return;
+		}
+		if (m_NetworkWaitStart < 0.0)
+			m_NetworkWaitStart = GetTime();
+		// Per-frame stall cost (same units as Update/Draw), not cumulative wait.
+		g_Engine->m_lastNetworkInMS = static_cast<double>(g_Engine->LastFrameInMS());
+	};
+
 	if (m_HasPendingStart)
 	{
-		BeginMatch(sim, m_PendingStartSeed, m_PendingStartPlayers, m_LocalSlot, m_PendingStartTurnLen, m_PendingStartPlayers);
+		BeginMatch(sim, m_PendingStartSeed, m_PendingStartPlayers, m_LocalSlot, m_PendingStartTurnLen, m_PendingStartPlayers, m_PendingStartInputDelay);
 		m_HasPendingStart = false;
 
 		for (const auto& cmd : m_EarlyCommands)
-		{
-			if (cmd.playerSlot < kMaxPlayers && cmd.turn == m_Turn)
-				m_Commands[cmd.playerSlot] = cmd;
-		}
+			StoreCommand(cmd);
 		m_EarlyCommands.clear();
 
 		// Apply TurnBundle that arrived with StartMatch.
@@ -705,18 +809,29 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 	}
 
 	if (!m_MatchRunning || m_Desynced)
+	{
+		reportNetworkWait(false);
 		return;
+	}
 
 	const bool isClient = (net.GetMode() == NetSession::Mode::Client);
 	const bool isHost = (net.GetMode() == NetSession::Mode::Host);
+	const bool isOffline = (net.GetMode() == NetSession::Mode::Offline);
 
 	EnsureLocalCommandSubmitted(net);
+
+	bool advanced = false;
 
 	// Clients only advance when the host sends a TurnBundle.
 	if (isClient)
 	{
 		if (m_PendingTurnBundle)
+		{
 			AdvanceTurn(net, sim);
+			advanced = true;
+		}
+		// Submitted locally but no bundle yet = waiting on host/peers.
+		reportNetworkWait(!advanced && m_LocalSubmitted);
 		return;
 	}
 
@@ -743,7 +858,7 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 			noop.turn = m_Turn;
 			noop.playerSlot = static_cast<uint8_t>(i);
 			noop.action = Net::kActionNone;
-			m_Commands[static_cast<size_t>(i)] = noop;
+			StoreCommand(noop);
 			filled = true;
 		}
 		(void)filled;
@@ -757,14 +872,8 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 			Net::PlayerCommand cmds[kMaxPlayers]{};
 			for (int i = 0; i < m_NumPlayers; ++i)
 			{
-				if (m_Commands[static_cast<size_t>(i)].has_value())
-					cmds[i] = *m_Commands[static_cast<size_t>(i)];
-				else
-				{
-					cmds[i].turn = m_Turn;
-					cmds[i].playerSlot = static_cast<uint8_t>(i);
-					cmds[i].action = Net::kActionNone;
-				}
+				cmds[i] = GetCommand(i, m_Turn);
+				m_Commands[static_cast<size_t>(i)] = cmds[i];
 			}
 			m_LastTurnBundle = Net::PackTurnBundle(m_Turn, static_cast<uint8_t>(m_NumPlayers), cmds);
 			m_LastTurnBundleTurn = m_Turn;
@@ -772,5 +881,12 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 			m_NextBundleResendTime = GetTime() + 0.1;
 		}
 		AdvanceTurn(net, sim);
+		advanced = true;
 	}
+
+	// Offline has no peers. Host network-wait = past pace time but still missing cmds.
+	const bool waitingOnPeers = !isOffline && !advanced
+		&& !AllCommandsReady()
+		&& GetTime() >= m_NextAdvanceEarliest;
+	reportNetworkWait(waitingOnPeers);
 }

@@ -228,33 +228,69 @@ void DrawPerfCounter(Font* font, int loc)
 	const float frameSec = g_Engine->LastFrameInSeconds();
 	const int fps = (frameSec > 0.0001f) ? static_cast<int>(1.0f / frameSec) : 0;
 	const int mspf = static_cast<int>(frameSec * 1000.0f);
-	const std::string perfTemp = std::to_string(fps) + " fps (" + std::to_string(mspf) + " mspf)";
+	const int netNow = static_cast<int>(g_Engine->m_NetworkFrames[49]);
+	std::string perfTemp = std::to_string(fps) + " fps (" + std::to_string(mspf) + " mspf)";
+	if (netNow > 0)
+		perfTemp += "  net " + std::to_string(netNow) + "ms";
 	const float fontSize = static_cast<float>(font->baseSize);
 	DrawTextEx(*font, perfTemp.c_str(),
 		{ hpos + width * 0.05f, static_cast<float>(vpos + height) - fontSize * 1.1f },
 		fontSize, 1, WHITE);
 
-	// Legend (U7 colors: Update=yellow, Draw=green)
+	// Legend (panel-relative — U7 incorrectly pinned this to full-screen Y).
 	const float legendY = static_cast<float>(vpos + height) - fontSize * 2.2f;
 	DrawTextEx(*font, "Update", { hpos + width * 0.05f, legendY }, fontSize, 1, YELLOW);
-	DrawTextEx(*font, "Draw", { hpos + width * 0.40f, legendY }, fontSize, 1, GREEN);
+	DrawTextEx(*font, "Draw", { hpos + width * 0.35f, legendY }, fontSize, 1, GREEN);
+	DrawTextEx(*font, "Network", { hpos + width * 0.60f, legendY }, fontSize, 1, SKYBLUE);
 
-	// Bars: Engine stores last 50 frames of update/draw time in milliseconds.
+	// Fixed 33ms budget so bar heights are comparable across frames (autoscaling
+	// made a 4ms frame look as tall as a 40ms stall).
+	constexpr float kBudgetMs = 33.0f;
 	const int baseline = vpos + height - static_cast<int>(fontSize * 2.4f);
 	const int maxBar = std::max(8, baseline - vpos - 4);
-	for (int i = 0; i < 49; ++i)
+	const float pxPerMs = static_cast<float>(maxBar) / kBudgetMs;
+
+	// 16.7ms (60fps) and 33ms (sim tick) guides.
+	const int y16 = baseline - static_cast<int>(16.7f * pxPerMs);
+	const int y33 = baseline - maxBar;
+	DrawLine(hpos + 2, y16, hpos + width - 2, y16, Color{ 80, 80, 80, 180 });
+	DrawLine(hpos + 2, y33, hpos + width - 2, y33, Color{ 100, 60, 60, 180 });
+
+	const int barSlots = std::min(50, (width - 8) / 2);
+	for (int i = 0; i < barSlots; ++i)
 	{
-		int updatePx = std::max(1, static_cast<int>(g_Engine->m_UpdateFrames[i]));
-		int drawPx = std::max(1, static_cast<int>(g_Engine->m_DrawFrames[i]));
-		if (updatePx + drawPx > maxBar)
+		// Oldest on the left: map slot i -> history index.
+		const int hist = 50 - barSlots + i;
+		const int rawUpdate = std::max(0, static_cast<int>(g_Engine->m_UpdateFrames[hist]));
+		const int rawNet = std::max(0, static_cast<int>(g_Engine->m_NetworkFrames[hist]));
+		const int rawDraw = std::max(0, static_cast<int>(g_Engine->m_DrawFrames[hist]));
+
+		int updatePx = static_cast<int>(rawUpdate * pxPerMs);
+		int netPx = static_cast<int>(rawNet * pxPerMs);
+		int drawPx = static_cast<int>(rawDraw * pxPerMs);
+		const int total = updatePx + netPx + drawPx;
+		if (total > maxBar && total > 0)
 		{
-			const float scale = static_cast<float>(maxBar) / static_cast<float>(updatePx + drawPx);
-			updatePx = std::max(1, static_cast<int>(updatePx * scale));
-			drawPx = std::max(1, static_cast<int>(drawPx * scale));
+			const float scale = static_cast<float>(maxBar) / static_cast<float>(total);
+			updatePx = static_cast<int>(updatePx * scale);
+			netPx = static_cast<int>(netPx * scale);
+			drawPx = static_cast<int>(drawPx * scale);
 		}
+
 		const int x = hpos + 4 + (i * 2);
-		DrawRectangle(x, baseline - updatePx, 2, updatePx, YELLOW);
-		DrawRectangle(x, baseline - (updatePx + drawPx), 2, drawPx, GREEN);
+		int y = baseline;
+		if (updatePx > 0)
+		{
+			DrawRectangle(x, y - updatePx, 2, updatePx, YELLOW);
+			y -= updatePx;
+		}
+		if (netPx > 0)
+		{
+			DrawRectangle(x, y - netPx, 2, netPx, SKYBLUE);
+			y -= netPx;
+		}
+		if (drawPx > 0)
+			DrawRectangle(x, y - drawPx, 2, drawPx, GREEN);
 	}
 }
 

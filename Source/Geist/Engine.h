@@ -29,6 +29,7 @@ public:
 		, m_Frames{0}
 		, m_DrawFrames{0}
 		, m_UpdateFrames{0}
+		, m_NetworkFrames{0}
 		, m_DrawTime(0)
 		, m_debugDrawing(false)
 		, m_RenderWidth(0.0f)
@@ -62,8 +63,10 @@ public:
 
 	double m_DrawFrames[50];
 	double m_UpdateFrames[50];
+	double m_NetworkFrames[50]; // ms spent waiting on lockstep peers (barrier)
 
 	double m_DrawTime;
+	double m_lastNetworkInMS = 0; // set by Lockstep each update; consumed into m_NetworkFrames
 
 	bool m_debugDrawing;
 

@@ -25,6 +25,8 @@ private:
 	float m_CameraDistance = 42.0f; // pulled back for a wider town view
 	Vector3 m_LookAt{};
 	MainHud m_Hud;
+	bool m_TerrainHitValid = false;
+	Vector3 m_TerrainHit{}; // continuous ray hit; cast uses (int)x/(int)z
 };
 
 #endif

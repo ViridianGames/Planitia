@@ -5,6 +5,7 @@
 #include "Geist/StateMachine.h"
 #include "GameGlobals.h"
 #include "GameSim.h"
+#include "GodPowerCursor.h"
 #include "Terrain.h"
 #include "WalkerSprites.h"
 #include "Geist/Engine.h"
@@ -20,11 +21,13 @@ void MainState::Init(const std::string& configfile)
 {
 	(void)configfile;
 	m_Hud.Init();
+	GodPowerCursor::Init();
 }
 
 void MainState::Shutdown()
 {
 	m_Hud.Shutdown();
+	GodPowerCursor::Shutdown();
 	g_Sim.Reset();
 	g_Terrain.reset();
 	WalkerSprites::Unload();
@@ -68,8 +71,10 @@ void MainState::OnEnter()
 		g_Lockstep.ResetOffline(0);
 		const unsigned int seed = 7777;
 		const uint16_t turnLen = static_cast<uint16_t>(
-			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 1);
-		g_Lockstep.BeginMatch(g_Sim, seed, /*simPlayers=*/2, /*localSlot=*/0, turnLen, /*inputPlayers=*/1);
+			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 2);
+		const uint16_t inputDelay = static_cast<uint16_t>(
+			g_Engine ? std::max(0, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("input_delay"))) : 2);
+		g_Lockstep.BeginMatch(g_Sim, seed, /*simPlayers=*/2, /*localSlot=*/0, turnLen, /*inputPlayers=*/1, inputDelay);
 	}
 
 	FocusCameraOnLocalTown();
@@ -97,8 +102,10 @@ void MainState::Update()
 	{
 		const unsigned int seed = static_cast<unsigned int>(GetTime() * 1000.0);
 		const uint16_t turnLen = static_cast<uint16_t>(
-			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 1);
-		g_Lockstep.BeginMatch(g_Sim, seed, 2, 0, turnLen, 1);
+			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 2);
+		const uint16_t inputDelay = static_cast<uint16_t>(
+			g_Engine ? std::max(0, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("input_delay"))) : 2);
+		g_Lockstep.BeginMatch(g_Sim, seed, 2, 0, turnLen, 1, inputDelay);
 		FocusCameraOnLocalTown();
 	}
 
@@ -123,8 +130,20 @@ void MainState::Update()
 		}
 	}
 
+	// Shared terrain pick for casting and the 3D power cursor (must stay in sync).
+	m_TerrainHitValid = false;
+	if (g_Terrain && !m_Hud.IsMouseOver())
+	{
+		Vector3 terrainHit{};
+		if (g_Terrain->Raycast(GetTerrainMouseRay(m_Camera), terrainHit))
+		{
+			m_TerrainHitValid = true;
+			m_TerrainHit = terrainHit;
+		}
+	}
+
 	// World click -> lockstep command (not immediate Try*).
-	if (g_Terrain && !m_Hud.IsMouseOver() && g_Lockstep.MatchRunning() && !g_Lockstep.IsDesynced())
+	if (m_TerrainHitValid && g_Lockstep.MatchRunning() && !g_Lockstep.IsDesynced())
 	{
 		const bool powersTab = (m_Hud.GetActiveTab() == MainHud::Tab::Powers);
 		const bool unitsTab = (m_Hud.GetActiveTab() == MainHud::Tab::Units);
@@ -135,18 +154,12 @@ void MainState::Update()
 
 		if (click)
 		{
-			const Ray ray = GetTerrainMouseRay(m_Camera);
-			Vector3 terrainHit{};
-			if (g_Terrain->Raycast(ray, terrainHit))
-			{
-				const int cx = static_cast<int>(terrainHit.x);
-				const int cz = static_cast<int>(terrainHit.z);
-
-				if (powersTab)
-					g_Lockstep.SubmitLocalAction(power, cx, cz);
-				else if (unitsTab && m_Hud.GetSelectedUnitAction() == PlayerAction::MoveGeneral)
-					g_Lockstep.SubmitLocalAction(PlayerAction::MoveGeneral, cx, cz);
-			}
+			const int cx = static_cast<int>(m_TerrainHit.x);
+			const int cz = static_cast<int>(m_TerrainHit.z);
+			if (powersTab)
+				g_Lockstep.SubmitLocalAction(power, cx, cz);
+			else if (unitsTab && m_Hud.GetSelectedUnitAction() == PlayerAction::MoveGeneral)
+				g_Lockstep.SubmitLocalAction(PlayerAction::MoveGeneral, cx, cz);
 		}
 	}
 
@@ -216,6 +229,16 @@ void MainState::Draw()
 	if (g_Terrain)
 		g_Terrain->Draw();
 	g_Sim.DrawUnits(m_Camera);
+	// 3D power marker only over the world — do not toggle OS cursor visibility
+	// (HideCursor/EnableCursor was snapping the mouse when crossing the HUD).
+	if (m_Hud.GetActiveTab() == MainHud::Tab::Powers && g_Lockstep.MatchRunning())
+	{
+		GodPowerCursor::Draw(
+			m_Camera,
+			m_Hud.GetSelectedPowerAction(),
+			m_TerrainHit,
+			m_TerrainHitValid);
+	}
 	rlEnableBackfaceCulling();
 	EndMode3D();
 

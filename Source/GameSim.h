@@ -87,6 +87,7 @@ private:
 	bool TrySpawnDaughterVillage(Unit& village);
 	int CountTeamWalkers(int team) const;
 	int CountTeamPopulation(int team) const;
+	int CountTeamSurvivors(int team) const; // walkers + military (incl. general)
 	int CellX(const Unit& u) const { return static_cast<int>(u.m_Pos.x); }
 	int CellZ(const Unit& u) const { return static_cast<int>(u.m_Pos.z); }
 

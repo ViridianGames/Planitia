@@ -32,7 +32,13 @@ namespace
 	uint16_t CfgTurnLength()
 	{
 		return static_cast<uint16_t>(
-			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 1);
+			g_Engine ? std::max(1, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("turn_length"))) : 2);
+	}
+
+	uint16_t CfgInputDelay()
+	{
+		return static_cast<uint16_t>(
+			g_Engine ? std::max(0, static_cast<int>(g_Engine->m_EngineConfig.GetNumber("input_delay"))) : 2);
 	}
 
 	Rectangle Btn(float x, float y, float w, float h)
@@ -329,7 +335,7 @@ void MultiplayerMenuState::Update()
 			const int pid = static_cast<int>(planitia_getpid());
 			SetLogFileName("runlog_host_" + std::to_string(pid) + ".txt");
 			g_Lockstep.PauseMatch("Hosting - waiting for client, then Start Match");
-			g_Lockstep.ConfigureMatch(1, 0, turnLen);
+			g_Lockstep.ConfigureMatch(1, 0, turnLen, CfgInputDelay());
 			RefreshHostInvite();
 			const std::string invite = CurrentInvite();
 			SetClipboardText(invite.c_str());
@@ -427,9 +433,9 @@ void MultiplayerMenuState::Update()
 			return;
 		}
 		const uint32_t seed = static_cast<uint32_t>(GetTime() * 1000.0);
-		g_Lockstep.ConfigureMatch(peers + 1, 0, turnLen);
+		g_Lockstep.ConfigureMatch(peers + 1, 0, turnLen, CfgInputDelay());
 		g_Lockstep.HostBroadcastStart(g_Net, seed);
-		g_Lockstep.BeginMatch(g_Sim, seed, peers + 1, 0, turnLen, peers + 1);
+		g_Lockstep.BeginMatch(g_Sim, seed, peers + 1, 0, turnLen, peers + 1, CfgInputDelay());
 		AddConsoleString("Match started (" + std::to_string(peers + 1) + " players)", GREEN);
 		m_TransitionToMain = true;
 		return;

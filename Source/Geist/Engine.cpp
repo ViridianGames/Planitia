@@ -101,6 +101,13 @@ void Engine::Update()
 	}
 	m_DrawFrames[49] = m_lastFrameInMS - m_lastUpdateInMS;
 
+	for (int i = 1; i < 50; ++i)
+	{
+		m_NetworkFrames[i - 1] = m_NetworkFrames[i];
+	}
+	m_NetworkFrames[49] = m_lastNetworkInMS;
+	m_lastNetworkInMS = 0; // Lockstep fills this during the upcoming Update
+
 	int64_t _updateTime = GameTimeInMS();
 
 	g_InputSystem->Update();

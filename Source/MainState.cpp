@@ -64,8 +64,13 @@ void MainState::OnEnter()
 	m_DrawCursor = true;
 	WalkerSprites::EnsureLoaded();
 
+	if (g_Lockstep.HasPendingReplay())
+	{
+		g_Net.Disconnect();
+		g_Lockstep.BeginPendingReplay(g_Sim);
+	}
 	// Multiplayer lobby already started the match - don't wipe the session.
-	if (!g_Lockstep.MatchRunning())
+	else if (!g_Lockstep.MatchRunning())
 	{
 		g_Net.Disconnect();
 		g_Lockstep.ResetOffline(0);
@@ -86,6 +91,7 @@ void MainState::OnEnter()
 
 void MainState::OnExit()
 {
+	g_Lockstep.StopRecording();
 	g_Net.Disconnect();
 	g_Lockstep.ResetOffline(0);
 }
@@ -98,7 +104,8 @@ void MainState::Update()
 		return;
 	}
 
-	if (IsKeyPressed(KEY_R) && g_Terrain && g_Net.GetMode() == NetSession::Mode::Offline)
+	if (IsKeyPressed(KEY_R) && g_Terrain && g_Net.GetMode() == NetSession::Mode::Offline
+		&& !g_Lockstep.IsReplayMode())
 	{
 		const unsigned int seed = static_cast<unsigned int>(GetTime() * 1000.0);
 		const uint16_t turnLen = static_cast<uint16_t>(
@@ -142,8 +149,9 @@ void MainState::Update()
 		}
 	}
 
-	// World click -> lockstep command (not immediate Try*).
-	if (m_TerrainHitValid && g_Lockstep.MatchRunning() && !g_Lockstep.IsDesynced())
+	// World click -> lockstep command (disabled during replay).
+	if (m_TerrainHitValid && g_Lockstep.MatchRunning() && !g_Lockstep.IsDesynced()
+		&& !g_Lockstep.IsReplayMode())
 	{
 		const bool powersTab = (m_Hud.GetActiveTab() == MainHud::Tab::Powers);
 		const bool unitsTab = (m_Hud.GetActiveTab() == MainHud::Tab::Units);
@@ -231,7 +239,8 @@ void MainState::Draw()
 	g_Sim.DrawUnits(m_Camera);
 	// 3D power marker only over the world — do not toggle OS cursor visibility
 	// (HideCursor/EnableCursor was snapping the mouse when crossing the HUD).
-	if (m_Hud.GetActiveTab() == MainHud::Tab::Powers && g_Lockstep.MatchRunning())
+	if (m_Hud.GetActiveTab() == MainHud::Tab::Powers && g_Lockstep.MatchRunning()
+		&& !g_Lockstep.IsReplayMode())
 	{
 		GodPowerCursor::Draw(
 			m_Camera,
@@ -251,27 +260,49 @@ void MainState::Draw()
 
 	if (g_smallFont)
 	{
-		// Help top-left (console is bottom-left above the perf panel).
-		const char* mode = g_Terrain ? g_Terrain->GetDrawModeName() : "";
 		const float fs = static_cast<float>(g_smallFont->baseSize);
-		DrawOutlinedText(g_smallFont, "WASD pan | QE orbit | Wheel zoom",
-			{ 8.0f, 8.0f }, fs, 1, WHITE);
-		DrawOutlinedText(g_smallFont, TextFormat("LMB cast | G %s | R regen | F3 perf | Esc", mode),
-			{ 8.0f, 8.0f + fs + 2.0f }, fs, 1, WHITE);
-
-		if (g_Sim.MatchOver() && g_font)
+		float helpY = 8.0f;
+		if (g_Lockstep.IsReplayMode())
 		{
-			const int winner = g_Sim.WinnerSlot();
-			const char* msg = (winner < 0)
-				? "DRAW - no walkers remain"
-				: (winner == g_Sim.LocalPlayerSlot() ? "VICTORY!" : "DEFEAT");
-			const Color col = (winner == g_Sim.LocalPlayerSlot())
-				? Color{ 80, 220, 100, 255 }
-				: Color{ 220, 80, 80, 255 };
-			const float fs = static_cast<float>(g_font->baseSize);
-			const Vector2 dim = MeasureTextEx(*g_font, msg, fs, 1);
-			const float cx = (g_Engine->m_RenderWidth - m_Hud.PanelRect().width) * 0.5f;
-			DrawOutlinedText(g_font, msg, { cx - dim.x * 0.5f, g_Engine->m_RenderHeight * 0.4f }, fs, 1, col);
+			DrawOutlinedText(g_smallFont, g_Lockstep.Status().c_str(),
+				{ 8.0f, helpY }, fs, 1, Color{ 180, 210, 255, 255 });
+			helpY += fs + 2.0f;
+			DrawOutlinedText(g_smallFont, "REPLAY - camera free | Esc title",
+				{ 8.0f, helpY }, fs, 1, Color{ 180, 210, 255, 255 });
+			helpY += fs + 4.0f;
+		}
+		const char* mode = g_Terrain ? g_Terrain->GetDrawModeName() : "";
+		DrawOutlinedText(g_smallFont, "WASD pan | QE orbit | Wheel zoom",
+			{ 8.0f, helpY }, fs, 1, WHITE);
+		DrawOutlinedText(g_smallFont, TextFormat("LMB cast | G %s | R regen | F3 perf | Esc", mode),
+			{ 8.0f, helpY + fs + 2.0f }, fs, 1, WHITE);
+
+		if (g_font)
+		{
+			const char* msg = nullptr;
+			Color col = WHITE;
+			if (g_Lockstep.IsReplayMode() && g_Lockstep.ReplayFinished())
+			{
+				msg = "REPLAY END";
+				col = Color{ 200, 220, 255, 255 };
+			}
+			else if (g_Sim.MatchOver() && !g_Lockstep.IsReplayMode())
+			{
+				const int winner = g_Sim.WinnerSlot();
+				msg = (winner < 0)
+					? "DRAW - no walkers remain"
+					: (winner == g_Sim.LocalPlayerSlot() ? "VICTORY!" : "DEFEAT");
+				col = (winner == g_Sim.LocalPlayerSlot())
+					? Color{ 80, 220, 100, 255 }
+					: Color{ 220, 80, 80, 255 };
+			}
+			if (msg)
+			{
+				const float big = static_cast<float>(g_font->baseSize);
+				const Vector2 dim = MeasureTextEx(*g_font, msg, big, 1);
+				const float cx = (g_Engine->m_RenderWidth - m_Hud.PanelRect().width) * 0.5f;
+				DrawOutlinedText(g_font, msg, { cx - dim.x * 0.5f, g_Engine->m_RenderHeight * 0.4f }, big, 1, col);
+			}
 		}
 	}
 }

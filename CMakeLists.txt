@@ -228,6 +228,7 @@ set(SOURCES
         Source/MultiplayerMenuState.cpp
         Source/NetSession.cpp
         Source/OptionsState.cpp
+        Source/Replay.cpp
         Source/Terrain.cpp
         Source/TitleState.cpp
         Source/UpnpPortMap.cpp

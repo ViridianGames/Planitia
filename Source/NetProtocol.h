@@ -25,7 +25,7 @@ namespace Net
 	// whenever the wire format or lockstep rules change incompatibly.
 	constexpr uint16_t kVersionMajor = 0;
 	constexpr uint16_t kVersionMinor = 1;
-	constexpr uint16_t kVersionPatch = 7;
+	constexpr uint16_t kVersionPatch = 8; // lockstep replay (.plr)
 	constexpr uint16_t kProtocolVersion = kVersionPatch; // Hello/Welcome field
 	constexpr uint8_t kChannelReliable = 0;
 

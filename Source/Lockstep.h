@@ -11,6 +11,7 @@
 #include "NetProtocol.h"
 #include "NetSession.h"
 #include "Player.h"
+#include "Replay.h"
 
 #include <array>
 #include <cstdint>
@@ -40,8 +41,15 @@ public:
 	int LocalSlot() const { return m_LocalSlot; }
 	bool IsDesynced() const { return m_Desynced; }
 	bool MatchRunning() const { return m_MatchRunning; }
+	bool IsReplayMode() const { return m_ReplayMode; }
+	bool ReplayFinished() const { return m_ReplayMode && m_ReplayFinished; }
 	void SetMatchRunning(bool v) { m_MatchRunning = v; }
 	void PauseMatch(const std::string& reason = "Paused");
+	void StopRecording();
+	// Load a .plr and prepare BeginMatch + inject-from-file (call before entering Main).
+	bool PrepareReplay(const std::string& path, std::string& error);
+	bool BeginPendingReplay(GameSim& sim);
+	bool HasPendingReplay() const { return m_HasPendingReplay; }
 	const std::string& Status() const { return m_Status; }
 
 	uint32_t AssignedSlotForPeer(int peerIndex) const;
@@ -54,6 +62,8 @@ public:
 	// (offline: simPlayers=2, inputPlayers=1 so AI team doesn't block the barrier).
 	void BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlayers, int localSlot, uint16_t turnLength, int inputPlayers = -1, uint16_t inputDelay = 2);
 	int InputDelay() const { return m_InputDelay; }
+	uint32_t MapSeed() const { return m_MapSeed; }
+	int SimPlayers() const { return m_SimPlayers; }
 
 	int OccupiedRemoteSlots() const;
 	std::string PeerNameForSlot(int slot) const;
@@ -143,6 +153,16 @@ private:
 
 	bool m_PendingColorNotify = false;
 	std::string m_PendingColorName;
+
+	uint32_t m_MapSeed = 0;
+	int m_SimPlayers = 2;
+
+	Replay::Writer m_Recorder;
+	bool m_ReplayMode = false;
+	bool m_ReplayFinished = false;
+	bool m_HasPendingReplay = false;
+	Replay::Document m_PendingReplay{};
+	size_t m_ReplayTurnIndex = 0;
 };
 
 #endif

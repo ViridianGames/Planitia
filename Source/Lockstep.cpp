@@ -22,6 +22,12 @@ extern std::unique_ptr<RNG> g_vitalRNG;
 
 void LockstepController::ResetOffline(int localSlot)
 {
+	StopRecording();
+	m_ReplayMode = false;
+	m_ReplayFinished = false;
+	m_HasPendingReplay = false;
+	m_PendingReplay = {};
+	m_ReplayTurnIndex = 0;
 	m_Turn = 0;
 	m_TurnLength = 1;
 	m_NumPlayers = 1;
@@ -76,7 +82,9 @@ void LockstepController::ConfigureMatch(int numPlayers, int localSlot, uint16_t 
 
 void LockstepController::PauseMatch(const std::string& reason)
 {
+	StopRecording();
 	m_MatchRunning = false;
+	m_ReplayMode = false;
 	m_LocalSubmitted = false;
 	m_Commands.fill(std::nullopt);
 	m_PendingTurnBundle = false;
@@ -295,12 +303,29 @@ void LockstepController::BeginMatch(GameSim& sim, uint32_t mapSeed, int simPlaye
 	m_NetworkWaitStart = -1.0;
 	m_LastTurnBundle.clear();
 	m_LastTurnBundleTurn = UINT32_MAX;
-	m_Status = "Match running";
+	m_MapSeed = mapSeed;
+	m_SimPlayers = simPlayers;
+	m_ReplayFinished = false;
+	m_Status = m_ReplayMode ? "REPLAY starting" : "Match running";
+
+	if (!m_ReplayMode)
+	{
+		Replay::Header rh{};
+		rh.mapSeed = mapSeed;
+		rh.simPlayers = static_cast<uint8_t>(simPlayers);
+		rh.inputPlayers = static_cast<uint8_t>(m_NumPlayers);
+		rh.localSlot = static_cast<uint8_t>(m_LocalSlot);
+		rh.turnLength = static_cast<uint16_t>(m_TurnLength);
+		rh.inputDelay = static_cast<uint16_t>(m_InputDelay);
+		for (int i = 0; i < kMaxPlayers; ++i)
+			rh.colors[i] = static_cast<uint8_t>(m_SlotColors[static_cast<size_t>(i)]);
+		m_Recorder.Start(rh);
+	}
 }
 
 void LockstepController::SubmitLocalAction(PlayerAction action, int cellX, int cellZ, uint16_t extra)
 {
-	if (!m_MatchRunning || m_Desynced)
+	if (!m_MatchRunning || m_Desynced || m_ReplayMode)
 		return;
 
 	// Schedule for turn N+inputDelay so the barrier can pipeline over the network.
@@ -755,6 +780,21 @@ void LockstepController::AdvanceTurn(NetSession& net, GameSim& sim)
 			net.SendToHost(bytes);
 	}
 
+	// Record AFTER sim ticks so a MatchOver turn is still on disk, then write
+	// a GameFinished trailer so playback continues until victory/defeat resolves.
+	if (m_Recorder.IsOpen() && !m_ReplayMode)
+	{
+		Net::PlayerCommand cmds[kMaxPlayers]{};
+		for (int i = 0; i < m_NumPlayers; ++i)
+			cmds[i] = GetCommand(i, executedTurn);
+		m_Recorder.AppendTurn(executedTurn, cmds, m_NumPlayers);
+		if (sim.MatchOver())
+		{
+			m_Recorder.AppendGameFinished(sim.WinnerSlot());
+			StopRecording();
+		}
+	}
+
 	++m_Turn;
 	m_LocalSubmitted = false;
 	m_Commands.fill(std::nullopt);
@@ -766,7 +806,42 @@ void LockstepController::AdvanceTurn(NetSession& net, GameSim& sim)
 		if (HaveCommand(i, m_Turn))
 			m_Commands[static_cast<size_t>(i)] = GetCommand(i, m_Turn);
 	}
-	m_Status = "Turn " + std::to_string(m_Turn);
+	m_Status = (m_ReplayMode ? "REPLAY turn " : "Turn ") + std::to_string(m_Turn);
+}
+
+
+void LockstepController::StopRecording()
+{
+	m_Recorder.Stop();
+}
+
+bool LockstepController::PrepareReplay(const std::string& path, std::string& error)
+{
+	Replay::Document doc;
+	if (!Replay::LoadFile(path, doc, error))
+		return false;
+	m_PendingReplay = std::move(doc);
+	m_HasPendingReplay = true;
+	m_ReplayTurnIndex = 0;
+	m_ReplayFinished = false;
+	m_Status = "Replay ready: " + path;
+	return true;
+}
+
+bool LockstepController::BeginPendingReplay(GameSim& sim)
+{
+	if (!m_HasPendingReplay)
+		return false;
+	const Replay::Header& h = m_PendingReplay.header;
+	m_ReplayMode = true;
+	m_ReplayFinished = false;
+	m_ReplayTurnIndex = 0;
+	for (int i = 0; i < kMaxPlayers; ++i)
+		m_SlotColors[static_cast<size_t>(i)] = static_cast<PlayerColorId>(h.colors[i]);
+	BeginMatch(sim, h.mapSeed, h.simPlayers, h.localSlot, h.turnLength, h.inputPlayers, h.inputDelay);
+	m_HasPendingReplay = false;
+	m_Status = "REPLAY turn 0";
+	return true;
 }
 
 void LockstepController::Update(NetSession& net, GameSim& sim)
@@ -811,6 +886,74 @@ void LockstepController::Update(NetSession& net, GameSim& sim)
 	if (!m_MatchRunning || m_Desynced)
 	{
 		reportNetworkWait(false);
+		return;
+	}
+
+	// --- Replay: inject recorded cmds and advance on the same wall-clock pace ---
+	if (m_ReplayMode)
+	{
+		reportNetworkWait(false);
+		if (m_ReplayFinished)
+			return;
+		if (GetTime() < m_NextAdvanceEarliest)
+			return;
+
+		const bool haveRecordedTurn = m_ReplayTurnIndex < m_PendingReplay.turns.size();
+		if (haveRecordedTurn)
+		{
+			const Replay::TurnRecord& rec = m_PendingReplay.turns[m_ReplayTurnIndex];
+			if (rec.turn != m_Turn)
+			{
+				// Keep playing in order; skip mismatches defensively.
+				m_ReplayTurnIndex++;
+				return;
+			}
+			m_Commands.fill(std::nullopt);
+			for (const auto& c : rec.cmds)
+				StoreCommand(c);
+			for (int i = 0; i < m_NumPlayers; ++i)
+			{
+				if (HaveCommand(i, m_Turn))
+					m_Commands[static_cast<size_t>(i)] = GetCommand(i, m_Turn);
+			}
+			AdvanceTurn(net, sim);
+			++m_ReplayTurnIndex;
+		}
+		else
+		{
+			// Past last recorded command: keep feeding no-ops until MatchOver
+			// (Earthquake FX / deaths often resolve after the killing cast turn).
+			if (sim.MatchOver())
+			{
+				m_ReplayFinished = true;
+				m_Status = "REPLAY END";
+				return;
+			}
+			m_Commands.fill(std::nullopt);
+			for (int i = 0; i < m_NumPlayers; ++i)
+			{
+				Net::PlayerCommand noop{};
+				noop.turn = m_Turn;
+				noop.playerSlot = static_cast<uint8_t>(i);
+				noop.action = Net::kActionNone;
+				StoreCommand(noop);
+				m_Commands[static_cast<size_t>(i)] = noop;
+			}
+			AdvanceTurn(net, sim);
+		}
+
+		if (sim.MatchOver())
+		{
+			m_ReplayFinished = true;
+			m_Status = "REPLAY END";
+		}
+		// Safety: don't spin forever if a truncated replay never reaches MatchOver.
+		else if (!haveRecordedTurn && !m_PendingReplay.turns.empty()
+			&& m_Turn > m_PendingReplay.turns.back().turn + 600u)
+		{
+			m_ReplayFinished = true;
+			m_Status = "REPLAY END (timeout)";
+		}
 		return;
 	}
 

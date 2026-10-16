@@ -255,6 +255,7 @@
     <ClCompile Include="Source\MultiplayerMenuState.cpp" />
     <ClCompile Include="Source\NetSession.cpp" />
     <ClCompile Include="Source\OptionsState.cpp" />
+    <ClCompile Include="Source\Replay.cpp" />
     <ClCompile Include="Source\Terrain.cpp" />
     <ClCompile Include="Source\TitleState.cpp" />
     <ClCompile Include="Source\UpnpPortMap.cpp" />
@@ -353,6 +354,7 @@
     <ClInclude Include="Source\NetProtocol.h" />
     <ClInclude Include="Source\NetSession.h" />
     <ClInclude Include="Source\OptionsState.h" />
+    <ClInclude Include="Source\Replay.h" />
     <ClInclude Include="Source\Player.h" />
     <ClInclude Include="Source\Terrain.h" />
     <ClInclude Include="Source\TitleState.h" />

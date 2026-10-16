@@ -4,7 +4,9 @@
 #include "Geist/StateMachine.h"
 
 #include "GameGlobals.h"
+#include "Geist/Logging.h"
 #include "NetProtocol.h"
+#include "Replay.h"
 
 using namespace std;
 
@@ -46,6 +48,27 @@ void TitleState::Update()
 		g_StateMachine->MakeStateTransition(STATE_MULTIPLAYERMENUSTATE);
 		return;
 	}
+
+	// Replay newest Data/Replays/*.plr (prefers last.plr)
+	if (IsKeyPressed(KEY_R))
+	{
+		Replay::EnsureDataDirs();
+		std::string path;
+		if (!Replay::FindNewestReplayPath(path))
+		{
+			Log("No replays in Data/Replays/");
+			return;
+		}
+		std::string err;
+		if (!g_Lockstep.PrepareReplay(path, err))
+		{
+			Log("Replay load failed: " + err);
+			return;
+		}
+		Log("Loading replay " + path);
+		g_StateMachine->MakeStateTransition(STATE_MAINSTATE);
+		return;
+	}
 }
 
 void TitleState::Draw()
@@ -66,6 +89,8 @@ void TitleState::Draw()
 		DrawOutlinedText(g_smallFont, "Space/Enter/N - local skirmish", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
 		y += fs + 3.0f;
 		DrawOutlinedText(g_smallFont, "M - multiplayer lobby", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
+		y += fs + 3.0f;
+		DrawOutlinedText(g_smallFont, "R - replay last match", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
 		y += fs + 3.0f;
 		DrawOutlinedText(g_smallFont, "Esc - quit", { 8.0f, y }, fs, 1, Color{ 200, 210, 230, 255 });
 	}

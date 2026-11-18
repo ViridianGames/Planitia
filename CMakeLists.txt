@@ -324,10 +324,13 @@ add_executable(planitia-harness
         Source/NetSession.cpp
         Source/UpnpPortMap.cpp
         Source/Geist/Config.cpp
+        Source/Geist/IO.cpp
         Source/Geist/Logging.cpp
         Source/Geist/Primitives.cpp
+        Source/Geist/RaylibModel.cpp
         Source/Geist/RNG.cpp
         Source/Geist/ResourceManager.cpp
+        Source/WalkerSprites.cpp
 )
 
 target_link_libraries(planitia-harness PRIVATE

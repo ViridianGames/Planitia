@@ -34,22 +34,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fdedb791-2604-4b97-a51b-6e2683f76003" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Redist/Planitia" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Redist/Planitia_Debug" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia_Debug" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Redist/engine.cfg" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/engine.cfg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameGlobals.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameGlobals.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameTypes.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameTypes.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Lockstep.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Lockstep.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainHud.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainHud.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Terrain.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Terrain.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Terrain.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Terrain.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Harness/HarnessGlobals.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Harness/HarnessGlobals.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

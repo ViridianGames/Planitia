@@ -1,0 +1,176 @@
+# Build Planitia and planitia-harness in Release for Linux and Windows.
+#
+# Linux uses the vendored ThirdParty/raylib/lib/libraylib.a. That archive
+# dlopens libGL and the X11 libraries when a window opens, so the job installs
+# those packages even though the link line does not name them.
+#
+# Windows uses the vendored raylib.lib with the VS 2022 generator. windows-latest
+# is VS 2026 and does not provide "Visual Studio 17 2022".
+
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux Release (x64)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libasound2-dev
+
+      - name: Show toolchain
+        run: |
+          cmake --version
+          g++ --version
+          ninja --version
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target Planitia planitia-harness --parallel
+
+      # CMake's Linux output directory is Redist/. If a binary landed under
+      # build/ instead, copy that one over whatever checkout left in Redist.
+      - name: Copy binaries into Redist
+        run: |
+          set -euo pipefail
+          mkdir -p Redist
+
+          copy_bin() {
+            local name="$1"
+            local dest="Redist/$name"
+            local src
+            src="$(find build -type f -name "$name" ! -path '*/CMakeFiles/*' 2>/dev/null | head -n 1 || true)"
+            if [ -n "${src}" ] && [ -f "${src}" ]; then
+              echo "Copying ${src} -> ${dest}"
+              cmake -E copy_if_different "${src}" "${dest}"
+            elif [ -f "${dest}" ]; then
+              echo "Already at ${dest}"
+            else
+              echo "Missing ${name} under build/ and Redist/" >&2
+              find build -type f -executable -print 2>/dev/null | head -n 40 || true
+              exit 1
+            fi
+            chmod +x "${dest}"
+            ls -la "${dest}"
+          }
+
+          copy_bin Planitia
+          copy_bin planitia-harness
+          file Redist/Planitia Redist/planitia-harness
+
+      - name: Upload Linux binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: planitia-linux
+          path: |
+            Redist/Planitia
+            Redist/planitia-harness
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows Release (x64)
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        shell: pwsh
+        run: |
+          cmake --version
+          cmake --help | Select-String -Pattern "Visual Studio"
+
+      - name: Configure
+        run: cmake -G "Visual Studio 17 2022" -A x64 -B build
+
+      - name: Build
+        run: cmake --build build --config Release --target Planitia planitia-harness --parallel
+
+      # MSVC writes Planitia.exe to build/Release. Copy that over Redist.
+      # The harness target writes straight to Redist, so keep that file when
+      # build/ has no copy.
+      - name: Copy binaries into Redist
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path Redist | Out-Null
+
+          Write-Host "--- .exe files under build/ only ---"
+          Get-ChildItem -Path build -Recurse -Filter *.exe -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host $_.FullName }
+
+          function Copy-Built([string]$name) {
+            $dest = "Redist\$name"
+            $src = $null
+            foreach ($c in @(
+              "build\Release\$name",
+              "build\Planitia\Release\$name",
+              "build\planitia-harness\Release\$name"
+            )) {
+              if (Test-Path -LiteralPath $c) { $src = $c; break }
+            }
+            if (-not $src) {
+              $hit = Get-ChildItem -Path build -Recurse -Filter $name -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch '\\CMakeFiles\\' } |
+                Select-Object -First 1
+              if ($hit) { $src = $hit.FullName }
+            }
+            if ($src) {
+              Write-Host "Copying $src -> $dest"
+              cmake -E copy_if_different "$src" "$dest"
+            } elseif (Test-Path -LiteralPath $dest) {
+              Write-Host "No copy under build/; CMake already wrote $dest"
+            } else {
+              Write-Error "$name not found under build/ or Redist/ after Release build"
+              exit 1
+            }
+            if (-not (Test-Path -LiteralPath $dest)) {
+              Write-Error "Copy finished but $dest is missing"
+              exit 1
+            }
+            Get-Item -LiteralPath $dest | Format-List FullName, Length, LastWriteTime
+          }
+
+          Copy-Built "Planitia.exe"
+          Copy-Built "planitia-harness.exe"
+
+      - name: Upload Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: planitia-windows
+          path: |
+            Redist/Planitia.exe
+            Redist/planitia-harness.exe
+          if-no-files-found: error
+          retention-days: 14

@@ -66,3 +66,9 @@ Vector2 GetScaledMousePosition();
 // Unproject using render WxH so the ray matches BeginMode3D into the virtual RT.
 // Planitia's bundled raylib lacks GetScreenToWorldRayEx; this is the local equivalent.
 Ray GetTerrainMouseRay(const Camera3D& camera);
+
+// Raylib's built-in projection is near 0.01, far 1000. MainState replaces it
+// with these after BeginMode3D, and the mouse ray uses the same pair.
+// Near stays inside the closest zoom; far still reaches the far map corner.
+constexpr double kViewNear = 1.0;
+constexpr double kViewFar = 400.0;

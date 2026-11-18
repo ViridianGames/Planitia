@@ -6,8 +6,8 @@
 
 #include <string>
 
-// Vertical game HUD strip (~1/4 of virtual render width).
-// Layout top->bottom: minimap, mana, civ status, tab bar, tab content.
+// Vertical game HUD strip (fixed render-pixel width).
+// Layout top->bottom: minimap, mana, tab bar, tab content.
 class MainHud
 {
 public:
@@ -49,7 +49,6 @@ private:
 	void RebuildMinimap();
 	void DrawMinimap(float x, float y);
 	void DrawManaBar(float x, float y, float width);
-	void DrawStatus(float x, float y, float width);
 	void DrawTabs(float x, float y, float width);
 	void DrawTabContent(float x, float y, float width, float height);
 	void DrawPowersTab(float x, float y, float width, float height);

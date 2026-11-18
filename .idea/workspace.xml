@@ -5,6 +5,8 @@
   </component>
   <component name="BackendCodeEditorMiscSettings">
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
+    <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
   </component>
   <component name="CMakePresetLoader">{
   &quot;useNewFormat&quot;: true
@@ -19,6 +21,7 @@
     <generated>
       <config projectName="Planitia" targetName="lua" />
       <config projectName="Planitia" targetName="enet" />
+      <config projectName="Planitia" targetName="planitia-harness" />
       <config projectName="Planitia" targetName="Planitia" />
       <config projectName="Planitia" targetName="libminiupnpc-static" />
     </generated>
@@ -31,21 +34,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fdedb791-2604-4b97-a51b-6e2683f76003" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Planitia.vcxproj" beforeDir="false" afterPath="$PROJECT_DIR$/Planitia.vcxproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Planitia.vcxproj.filters" beforeDir="false" afterPath="$PROJECT_DIR$/Planitia.vcxproj.filters" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Redist/Planitia" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Redist/Planitia_Debug" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/Planitia_Debug" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Redist/engine.cfg" beforeDir="false" afterPath="$PROJECT_DIR$/Redist/engine.cfg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/GameGlobals.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameSim.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/GameSim.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameSim.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Geist/Engine.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Geist/Engine.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/Geist/Engine.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Geist/Engine.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/GameGlobals.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameGlobals.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/GameTypes.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/GameTypes.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/Lockstep.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/Lockstep.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Lockstep.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/MainHud.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/MainHud.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainHud.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Source/MainState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/MainState.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/MainState.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Terrain.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Terrain.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/Terrain.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/Terrain.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,7 +60,7 @@
     <option name="formatViaClangd" value="false" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="458" />
+    <option name="cachedIndexableFilesCount" value="480" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Release" />
@@ -72,23 +76,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0000000000076377" />
-      <entry key="MS500" value="1.0059895309447107" />
-      <entry key="S2" value="1.3555805361722417" />
-      <entry key="S5" value="2.1277366290866118" />
-      <entry key="S10" value="2.79660754278345" />
-      <entry key="S30" value="3.5154540596559958" />
-      <entry key="S60" value="3.745272490137983" />
-      <entry key="M2" value="3.8693449268986044" />
-      <entry key="M5" value="3.9469240820709848" />
-      <entry key="M10" value="3.973324341627774" />
-      <entry key="M15" value="3.9821854739805462" />
-      <entry key="M30" value="3.9910773214387403" />
-      <entry key="H1" value="3.9955347995637283" />
-      <entry key="H2" value="3.9977664595047195" />
-      <entry key="H4" value="3.9990439776337996" />
-      <entry key="D1" value="4.233055088057776" />
-      <entry key="W1" value="4.812217360034165" />
+      <entry key="MS100" value="1.0000000073991158" />
+      <entry key="MS500" value="1.0238425770716924" />
+      <entry key="S2" value="1.5532041863888284" />
+      <entry key="S5" value="2.6024285985874167" />
+      <entry key="S10" value="3.667423854050512" />
+      <entry key="S30" value="4.998010603142311" />
+      <entry key="S60" value="5.462967828254749" />
+      <entry key="M2" value="5.721726357483597" />
+      <entry key="M5" value="5.886245326146464" />
+      <entry key="M10" value="5.942706169791142" />
+      <entry key="M15" value="5.9617108830962025" />
+      <entry key="M30" value="5.980808656263978" />
+      <entry key="H1" value="5.990392599776134" />
+      <entry key="H2" value="5.995193465752862" />
+      <entry key="H4" value="5.998378150943916" />
+      <entry key="D1" value="7.40319004243041" />
+      <entry key="W1" value="11.505409251087118" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -110,23 +114,23 @@
       <entry key="W1" value="0.0" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.9726549474196632" />
-      <entry key="MS500" value="1.0004183365667594" />
-      <entry key="S2" value="1.3534332042893376" />
-      <entry key="S5" value="2.1257494538886883" />
-      <entry key="S10" value="2.794986271018072" />
-      <entry key="S30" value="3.5146629630730395" />
-      <entry key="S60" value="3.744834859365196" />
-      <entry key="M2" value="3.8691145835738645" />
-      <entry key="M5" value="3.9468290390210576" />
-      <entry key="M10" value="3.9732763237855666" />
-      <entry key="M15" value="3.9821533508854796" />
-      <entry key="M30" value="3.9910612040625915" />
-      <entry key="H1" value="3.995526726875509" />
-      <entry key="H2" value="3.9977624196497525" />
-      <entry key="H4" value="3.9990419399536257" />
-      <entry key="D1" value="4.233050675726246" />
-      <entry key="W1" value="4.812215284415125" />
+      <entry key="MS100" value="0.9659363361216321" />
+      <entry key="MS500" value="1.0168032270722096" />
+      <entry key="S2" value="1.5506968009667659" />
+      <entry key="S5" value="2.6007434938395124" />
+      <entry key="S10" value="3.666179717917512" />
+      <entry key="S30" value="4.997414387731306" />
+      <entry key="S60" value="5.462636786141136" />
+      <entry key="M2" value="5.721551565335941" />
+      <entry key="M5" value="5.88617303698628" />
+      <entry key="M10" value="5.942669616902649" />
+      <entry key="M15" value="5.961686422786916" />
+      <entry key="M30" value="5.980796380003026" />
+      <entry key="H1" value="5.990386450072385" />
+      <entry key="H2" value="5.995190388001398" />
+      <entry key="H4" value="5.998376609746625" />
+      <entry key="D1" value="7.403188409153237" />
+      <entry key="W1" value="11.505407340588803" />
     </decayedShown>
   </component>
   <component name="ProjectApplicationVersion">
@@ -146,7 +150,9 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.Planitia.executor": "Debug",
+    "CMake Application.Planitia.executor": "Run",
+    "CMake Application.planitia-harness.executor": "Run",
+    "CidrDebugProfileConversion": "true",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
@@ -169,6 +175,7 @@
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.first.attach.projects": "true",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -199,13 +206,38 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="planitia-harness" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Planitia" TARGET_NAME="planitia-harness" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Planitia" RUN_TARGET_NAME="planitia-harness">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <list>
       <item itemvalue="CMake Application.enet" />
       <item itemvalue="CMake Application.lua" />
       <item itemvalue="CMake Application.Planitia" />
+      <item itemvalue="CMake Application.planitia-harness" />
       <item itemvalue="CMake Application.libminiupnpc-static" />
     </list>
   </component>
+  <component name="SelectedDebugProfileService"><![CDATA[{
+  "profileIdByStamp": [
+    {
+      "first": {
+        "##RUN_CONFIGURATION##": "CMake Application.planitia-harness",
+        "cmake": "CMakeBuildProfile:Release"
+      },
+      "second": "44074e62-462f-46cf-bd4b-e03fd243a7ea"
+    },
+    {
+      "first": {
+        "##RUN_CONFIGURATION##": "CMake Application.Planitia",
+        "cmake": "CMakeBuildProfile:Release"
+      },
+      "second": "44074e62-462f-46cf-bd4b-e03fd243a7ea"
+    }
+  ],
+  "modificationCount": 7
+}]]></component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="fdedb791-2604-4b97-a51b-6e2683f76003" name="Changes" comment="" />
@@ -220,6 +252,8 @@
       <workItem from="1790029734504" duration="11000" />
       <workItem from="1790034244917" duration="2345000" />
       <workItem from="1790038364063" duration="9782000" />
+      <workItem from="1790168705609" duration="2168000" />
+      <workItem from="1792085414920" duration="7859000" />
     </task>
     <servers />
   </component>

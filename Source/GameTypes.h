@@ -56,21 +56,32 @@ enum class PlayerAction : uint8_t
 	Count
 };
 
-// Classic Planitia mana costs (adapted).
+// Populous-style exponential cast costs (shared mana pool, no per-spell charge
+// toggles). Land tools stay tiny; disaster powers jump sharply.
 inline float ManaCostFor(PlayerAction action)
 {
 	switch (action)
 	{
+	// Tier 0 — land tools (spamable)
 	case PlayerAction::Flatten: return 0.025f;
 	case PlayerAction::Raise:
-	case PlayerAction::Lower: return 0.1f;
-	case PlayerAction::Bless:
-	case PlayerAction::StoneRain:
-	case PlayerAction::Lightning:
-	case PlayerAction::Earthquake: return 5.0f;
-	case PlayerAction::Flamestrike:
-	case PlayerAction::HealingLight: return 25.0f;
-	case PlayerAction::Swamp: return 75.0f;
+	case PlayerAction::Lower: return 0.08f;
+
+	// Tier 1 — cheap utility
+	case PlayerAction::Bless: return 1.5f;
+
+	// Tier 2 — light offense
+	case PlayerAction::Lightning: return 5.0f;
+	case PlayerAction::StoneRain: return 8.0f;
+
+	// Tier 3 — mid disasters
+	case PlayerAction::Earthquake: return 18.0f;
+	case PlayerAction::HealingLight: return 28.0f;
+
+	// Tier 4 — heavy
+	case PlayerAction::Flamestrike: return 45.0f;
+	case PlayerAction::Swamp: return 90.0f;
+
 	case PlayerAction::CreateArcher:
 	case PlayerAction::CreateBarbarian:
 	case PlayerAction::CreateWarrior:

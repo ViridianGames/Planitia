@@ -23,6 +23,36 @@
 #include <cstring>
 #include <vector>
 
+// raylib loads GL through glad and does not wrap polygon offset. A negative
+// offset pulls the water toward the camera by a couple of depth steps, so the
+// shoreline stops swapping with the beach where the two surfaces meet.
+extern "C"
+{
+	extern void (*glad_glEnable)(unsigned int cap);
+	extern void (*glad_glDisable)(unsigned int cap);
+	extern void (*glad_glPolygonOffset)(float factor, float units);
+}
+
+namespace
+{
+	constexpr unsigned int kGlPolygonOffsetFill = 0x8037;
+
+	void BeginWaterDepthBias()
+	{
+		if (glad_glEnable == nullptr || glad_glPolygonOffset == nullptr)
+			return;
+		glad_glEnable(kGlPolygonOffsetFill);
+		glad_glPolygonOffset(-1.0f, -2.0f);
+	}
+
+	void EndWaterDepthBias()
+	{
+		if (glad_glDisable == nullptr)
+			return;
+		glad_glDisable(kGlPolygonOffsetFill);
+	}
+}
+
 namespace
 {
 	constexpr float kAmbientLight = 128.0f;
@@ -132,22 +162,33 @@ Terrain::~Terrain()
 	Shutdown();
 }
 
-void Terrain::Init(const std::string& configfile)
+void Terrain::AllocateArrays()
 {
-	Shutdown();
-	LoadConfig(configfile);
-
 	m_VertexWidth = m_CellWidth + 1;
 	m_VertexHeight = m_CellHeight + 1;
 	m_Values.assign(static_cast<size_t>(m_VertexWidth * m_VertexHeight), 0.0f);
 	m_Cells.assign(static_cast<size_t>(m_CellWidth * m_CellHeight), TerrainCell{});
-
 	m_CellDirtyFlag.assign(static_cast<size_t>(m_CellWidth * m_CellHeight), 0);
 	m_DirtyCells.clear();
+}
 
+void Terrain::Init(const std::string& configfile)
+{
+	Shutdown();
+	m_Headless = false;
+	LoadConfig(configfile);
+	AllocateArrays();
 	LoadTextures();
 	InitializeMap(m_Seed);
 	RebuildMesh();
+}
+
+void Terrain::InitSimulation(const std::string& configfile)
+{
+	Shutdown();
+	m_Headless = true;
+	LoadConfig(configfile);
+	AllocateArrays();
 }
 
 void Terrain::Shutdown()
@@ -194,6 +235,12 @@ void Terrain::Shutdown()
 	m_Cells.clear();
 	m_CellDirtyFlag.clear();
 	m_DirtyCells.clear();
+	if (m_WaterShader.id > 0)
+	{
+		UnloadShader(m_WaterShader);
+		m_WaterShader = {};
+		m_WaterTimeLoc = -1;
+	}
 }
 
 void Terrain::CycleDrawMode()
@@ -272,6 +319,13 @@ void Terrain::LoadTextures()
 		if (m_TerrainTextures[i].id > 0)
 			SetTextureFilter(m_TerrainTextures[i], TEXTURE_FILTER_POINT);
 	}
+	if (m_TerrainTextures[TT_WATER].id > 0)
+	{
+		// The sheet scrolls past the 0..1 range, so the water map has to repeat.
+		SetTextureWrap(m_TerrainTextures[TT_WATER], TEXTURE_WRAP_REPEAT);
+		SetTextureFilter(m_TerrainTextures[TT_WATER], TEXTURE_FILTER_BILINEAR);
+	}
+	LoadWaterShader();
 
 	Image white = GenImageColor(1, 1, WHITE);
 	m_WhiteTexture = LoadTextureFromImage(white);
@@ -823,6 +877,91 @@ void Terrain::UnloadDrawMeshes()
 		m_TerrainModel = {};
 		m_TerrainModelLoaded = false;
 	}
+	if (m_WaterModelLoaded)
+	{
+		UnloadModel(m_WaterModel);
+		m_WaterModel = {};
+		m_WaterModelLoaded = false;
+	}
+}
+
+void Terrain::LoadWaterShader()
+{
+	if (m_WaterShader.id > 0)
+	{
+		UnloadShader(m_WaterShader);
+		m_WaterShader = {};
+	}
+	m_WaterTimeLoc = -1;
+	m_WaterShader = LoadShader("Data/Shaders/water.vs", "Data/Shaders/water.fs");
+	if (m_WaterShader.id == 0)
+	{
+		Log("WARNING: Data/Shaders/water.vs or water.fs failed to load");
+		return;
+	}
+	m_WaterTimeLoc = GetShaderLocation(m_WaterShader, "time");
+}
+
+void Terrain::BuildWaterPlane()
+{
+	if (m_WaterModelLoaded)
+	{
+		UnloadModel(m_WaterModel);
+		m_WaterModel = {};
+		m_WaterModelLoaded = false;
+	}
+	if (m_CellWidth <= 0 || m_CellHeight <= 0)
+		return;
+
+	// Draw height only. m_WaterHeight stays the sim floor. The extra lift keeps
+	// the wave trough above the beach tiles, where a zoomed-out depth buffer
+	// would otherwise tie the two surfaces.
+	constexpr float kAboveFloor = 0.20f;
+	constexpr float kTileCells = 4.0f;
+	const float y = m_WaterHeight + kAboveFloor;
+	const float alpha = 230.0f / 255.0f;
+
+	std::vector<Vertex> verts;
+	verts.reserve(static_cast<size_t>(m_CellWidth) * static_cast<size_t>(m_CellHeight) * 6u);
+	for (int z = 0; z < m_CellHeight; ++z)
+	{
+		for (int x = 0; x < m_CellWidth; ++x)
+		{
+			auto vert = [&](int vx, int vz)
+			{
+				return CreateVertex(
+					static_cast<float>(vx), y, static_cast<float>(vz),
+					1.0f, 1.0f, 1.0f, alpha,
+					static_cast<float>(vx) / kTileCells,
+					static_cast<float>(vz) / kTileCells);
+			};
+			const Vertex v00 = vert(x, z);
+			const Vertex v01 = vert(x, z + 1);
+			const Vertex v10 = vert(x + 1, z);
+			const Vertex v11 = vert(x + 1, z + 1);
+			// Faces +Y so the sheet is visible from the camera above the map.
+			verts.push_back(v00);
+			verts.push_back(v01);
+			verts.push_back(v10);
+			verts.push_back(v10);
+			verts.push_back(v01);
+			verts.push_back(v11);
+		}
+	}
+
+	Mesh mesh = BuildMeshFromTriangleSoup(verts);
+	m_WaterModel = LoadModelFromMesh(mesh);
+	if (m_WaterModel.materialCount > 0)
+	{
+		Texture2D tex = m_TerrainTextures[TT_WATER];
+		if (tex.id == 0)
+			tex = m_WhiteTexture;
+		if (tex.id > 0)
+			m_WaterModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = tex;
+		if (m_WaterShader.id > 0)
+			m_WaterModel.materials[0].shader = m_WaterShader;
+	}
+	m_WaterModelLoaded = true;
 }
 
 void Terrain::FillCellVertices(int cellX, int cellZ, Vertex* out12) const
@@ -831,8 +970,9 @@ void Terrain::FillCellVertices(int cellX, int cellZ, Vertex* out12) const
 	int type = GetTerrainType(cellX, cellZ);
 	if (type < 0 || type >= TT_LASTTERRAINTYPE)
 		type = TT_GRASS;
+	// Sea cells stay water in the sim. The mesh under the sheet is beach.
 	if (IsWaterCell(cellX, cellZ))
-		type = TT_WATER;
+		type = TT_BEACH;
 
 	float au0 = 0, av0 = 0, au1 = 1, av1 = 1;
 	AtlasUvRect(type, au0, av0, au1, av1);
@@ -840,40 +980,26 @@ void Terrain::FillCellVertices(int cellX, int cellZ, Vertex* out12) const
 	auto mapV = [&](float v) { return av0 + v * (av1 - av0); };
 
 	const Color albedo = textured ? WHITE : BaseColorForType(type);
-	const float alpha = (type == TT_WATER) ? (200.0f / 255.0f) : 1.0f;
 
-	Vector3 ul, ur, lr, ll, mid;
-	if (type == TT_WATER)
-	{
-		const float y = m_WaterHeight;
-		ul = { static_cast<float>(cellX), y, static_cast<float>(cellZ) };
-		ur = { static_cast<float>(cellX + 1), y, static_cast<float>(cellZ) };
-		lr = { static_cast<float>(cellX + 1), y, static_cast<float>(cellZ + 1) };
-		ll = { static_cast<float>(cellX), y, static_cast<float>(cellZ + 1) };
-		mid = { static_cast<float>(cellX) + 0.5f, y, static_cast<float>(cellZ) + 0.5f };
-	}
-	else
-	{
-		const float hUL = GetValue(cellX, cellZ);
-		const float hUR = GetValue(cellX + 1, cellZ);
-		const float hLR = GetValue(cellX + 1, cellZ + 1);
-		const float hLL = GetValue(cellX, cellZ + 1);
-		const float hM = 0.25f * (hUL + hUR + hLR + hLL);
-		ul = { static_cast<float>(cellX), hUL, static_cast<float>(cellZ) };
-		ur = { static_cast<float>(cellX + 1), hUR, static_cast<float>(cellZ) };
-		lr = { static_cast<float>(cellX + 1), hLR, static_cast<float>(cellZ + 1) };
-		ll = { static_cast<float>(cellX), hLL, static_cast<float>(cellZ + 1) };
-		mid = { static_cast<float>(cellX) + 0.5f, hM, static_cast<float>(cellZ) + 0.5f };
-	}
+	const float hUL = GetValue(cellX, cellZ);
+	const float hUR = GetValue(cellX + 1, cellZ);
+	const float hLR = GetValue(cellX + 1, cellZ + 1);
+	const float hLL = GetValue(cellX, cellZ + 1);
+	const float hM = 0.25f * (hUL + hUR + hLR + hLL);
+	const Vector3 ul = { static_cast<float>(cellX), hUL, static_cast<float>(cellZ) };
+	const Vector3 ur = { static_cast<float>(cellX + 1), hUR, static_cast<float>(cellZ) };
+	const Vector3 lr = { static_cast<float>(cellX + 1), hLR, static_cast<float>(cellZ + 1) };
+	const Vector3 ll = { static_cast<float>(cellX), hLL, static_cast<float>(cellZ + 1) };
+	const Vector3 mid = { static_cast<float>(cellX) + 0.5f, hM, static_cast<float>(cellZ) + 0.5f };
 
 	EmitFlatTriangle(out12 + 0, ul, ur, mid, albedo,
-		mapU(0), mapV(0), mapU(1), mapV(0), mapU(0.5f), mapV(0.5f), alpha);
+		mapU(0), mapV(0), mapU(1), mapV(0), mapU(0.5f), mapV(0.5f));
 	EmitFlatTriangle(out12 + 3, ur, lr, mid, albedo,
-		mapU(1), mapV(0), mapU(1), mapV(1), mapU(0.5f), mapV(0.5f), alpha);
+		mapU(1), mapV(0), mapU(1), mapV(1), mapU(0.5f), mapV(0.5f));
 	EmitFlatTriangle(out12 + 6, lr, ll, mid, albedo,
-		mapU(1), mapV(1), mapU(0), mapV(1), mapU(0.5f), mapV(0.5f), alpha);
+		mapU(1), mapV(1), mapU(0), mapV(1), mapU(0.5f), mapV(0.5f));
 	EmitFlatTriangle(out12 + 9, ll, ul, mid, albedo,
-		mapU(0), mapV(1), mapU(0), mapV(0), mapU(0.5f), mapV(0.5f), alpha);
+		mapU(0), mapV(1), mapU(0), mapV(0), mapU(0.5f), mapV(0.5f));
 }
 
 void Terrain::WriteCellToMesh(int cellX, int cellZ)
@@ -934,7 +1060,7 @@ void Terrain::WriteCellToMesh(int cellX, int cellZ)
 
 void Terrain::FlushDirtyCells()
 {
-	if (m_DirtyCells.empty())
+	if (m_Headless || m_DirtyCells.empty())
 		return;
 	for (int idx : m_DirtyCells)
 	{
@@ -948,6 +1074,9 @@ void Terrain::FlushDirtyCells()
 
 void Terrain::RebuildMesh()
 {
+	if (m_Headless)
+		return;
+
 	UnloadDrawMeshes();
 
 	const int cellCount = m_CellWidth * m_CellHeight;
@@ -974,6 +1103,7 @@ void Terrain::RebuildMesh()
 	m_FullRebuild = false;
 	m_DirtyCells.clear();
 	std::fill(m_CellDirtyFlag.begin(), m_CellDirtyFlag.end(), 0);
+	BuildWaterPlane();
 
 	Log("Terrain rebuilt: " + std::to_string(m_CellWidth) + "x" + std::to_string(m_CellHeight)
 		+ " cells, seed " + std::to_string(m_Seed)
@@ -983,6 +1113,8 @@ void Terrain::RebuildMesh()
 
 void Terrain::Update()
 {
+	if (m_Headless)
+		return;
 	if (m_FullRebuild || !m_TerrainModelLoaded)
 	{
 		RebuildMesh();
@@ -1010,9 +1142,28 @@ void Terrain::Draw()
 	if (wire)
 	{
 		DrawModelWires(m_TerrainModel, Vector3{ 0, 0, 0 }, 1.0f, Color{ 220, 220, 100, 255 });
+		if (m_WaterModelLoaded)
+		{
+			BeginWaterDepthBias();
+			DrawModelWires(m_WaterModel, Vector3{ 0, 0, 0 }, 1.0f, Color{ 80, 150, 210, 255 });
+			EndWaterDepthBias();
+		}
 		return;
 	}
 
-	// Keep depth writes on so units sort against hills. Water uses vertex alpha + blending.
+	// Land first, then the water sheet, so the sheet covers beach slopes and hills cover the sheet.
 	DrawModel(m_TerrainModel, Vector3{ 0, 0, 0 }, 1.0f, WHITE);
+	if (!m_WaterModelLoaded)
+		return;
+
+	if (m_WaterShader.id > 0 && m_WaterTimeLoc >= 0)
+	{
+		const float time = static_cast<float>(GetTime());
+		SetShaderValue(m_WaterShader, m_WaterTimeLoc, &time, SHADER_UNIFORM_FLOAT);
+	}
+	BeginBlendMode(BLEND_ALPHA);
+	BeginWaterDepthBias();
+	DrawModel(m_WaterModel, Vector3{ 0, 0, 0 }, 1.0f, WHITE);
+	EndWaterDepthBias();
+	EndBlendMode();
 }

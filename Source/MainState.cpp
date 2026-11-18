@@ -233,6 +233,16 @@ void MainState::Draw()
 	ClearBackground(Color{ 24, 40, 64, 255 });
 
 	BeginMode3D(m_Camera);
+	// The default 0.01..1000 range cannot separate the water sheet from the beach
+	// until the camera is close. Same near/far as GetTerrainMouseRay.
+	const float aspect = (g_Engine != nullptr && g_Engine->m_RenderHeight > 0.0f)
+		? g_Engine->m_RenderWidth / g_Engine->m_RenderHeight
+		: static_cast<float>(GetScreenWidth()) / static_cast<float>(std::max(GetScreenHeight(), 1));
+	rlSetMatrixProjection(MatrixPerspective(
+		static_cast<double>(m_Camera.fovy) * DEG2RAD,
+		static_cast<double>(aspect),
+		kViewNear,
+		kViewFar));
 	rlDisableBackfaceCulling();
 	if (g_Terrain)
 		g_Terrain->Draw();

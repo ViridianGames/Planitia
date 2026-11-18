@@ -225,6 +225,7 @@ set(SOURCES
         Source/Main.cpp
         Source/MainHud.cpp
         Source/MainState.cpp
+        Source/MatchChecksum.cpp
         Source/MultiplayerMenuState.cpp
         Source/NetSession.cpp
         Source/OptionsState.cpp
@@ -307,3 +308,44 @@ endif()
 
 # Set as Visual Studio startup project
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Planitia)
+
+# ============================================================================
+# Headless match harness (no window, no Main.cpp)
+# ============================================================================
+add_executable(planitia-harness
+        Source/Harness/HarnessMain.cpp
+        Source/Harness/SettleAgent.cpp
+        Source/Harness/StdioSeat.cpp
+        Source/Harness/HarnessGlobals.cpp
+        Source/MatchChecksum.cpp
+        Source/GameSim.cpp
+        Source/Terrain.cpp
+        Source/Replay.cpp
+        Source/NetSession.cpp
+        Source/UpnpPortMap.cpp
+        Source/Geist/Config.cpp
+        Source/Geist/Logging.cpp
+        Source/Geist/Primitives.cpp
+        Source/Geist/RNG.cpp
+        Source/Geist/ResourceManager.cpp
+)
+
+target_link_libraries(planitia-harness PRIVATE
+        raylib
+        enet
+        ${PLANITIA_MINIUPNPC_TARGET}
+)
+
+set_target_properties(planitia-harness PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Redist"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/Redist"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/Redist"
+        OUTPUT_NAME "planitia-harness"
+        OUTPUT_NAME_DEBUG "planitia-harness"
+        OUTPUT_NAME_RELEASE "planitia-harness"
+)
+
+if(UNIX)
+    target_compile_options(planitia-harness PRIVATE -ffunction-sections -fdata-sections)
+    target_link_options(planitia-harness PRIVATE -Wl,--gc-sections)
+endif()

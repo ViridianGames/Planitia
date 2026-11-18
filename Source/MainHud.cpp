@@ -13,33 +13,40 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 
 namespace
 {
-	constexpr int kMinimapSize = 64;
-	constexpr float kPanelFrac = 0.25f;
+	constexpr int kMinimapSize = 96;
+	constexpr float kPanelWidth = 110.0f;
 	constexpr float kPad = 4.0f;
 	constexpr float kManaBarH = 10.0f;
-	constexpr float kStatusH = 12.0f; // single-line civ status
+	constexpr float kManaGapAfterMinimap = 2.0f; // mana sits 2px higher than a full kPad gap
+	constexpr float kManaGapBeforeTabs = 2.0f;
 	constexpr float kTabH = 16.0f;
+	constexpr float kTabContentGap = 0.0f;
+	constexpr float kContentBottomPad = 2.0f;
+	// Tooltip sits left of the panel. This lifts its bottom edge off the screen bottom.
+	constexpr float kPowerTooltipBottomGap = 64.0f;
 
 	float HudTabsY()
 	{
-		return kPad + kMinimapSize + kPad + kManaBarH + kPad + kStatusH + kPad;
+		return kPad + kMinimapSize + kManaGapAfterMinimap + kManaBarH + kManaGapBeforeTabs;
 	}
 
 	// Shared layout for draw + hit-test (must stay in sync).
 	Rectangle HudContentRect(float panelX, float panelW, float panelH)
 	{
 		const float tabsY = HudTabsY();
-		const float contentY = tabsY + kTabH + 2.0f;
-		return Rectangle{ panelX + 1.0f, contentY, panelW - 2.0f, panelH - contentY - kPad };
+		const float contentY = tabsY + kTabH + kTabContentGap;
+		return Rectangle{ panelX + 1.0f, contentY, panelW - 2.0f, panelH - contentY - kContentBottomPad };
 	}
 
 	// Icon-only power grid (labels live in bottom-of-panel tooltips).
-	// Fixed 26x26 cells/icons so borders stay consistent at 480x270 virtual res.
+	// 4x5 of 26x26 cells — layout pads leave ~136px for the grid at 270p.
 	constexpr int kPowerCols = 4;
+	constexpr int kPowerRows = 5;
 	constexpr float kPowerCell = 26.0f;
 	constexpr float kPowerIcon = 26.0f;
 	constexpr float kPowerGap = 1.0f;
@@ -99,28 +106,42 @@ namespace
 	constexpr int kIconBlock = 128;
 
 	const PowerSlot kPowers[] = {
-		// Row 0: Flatten | Earthquake
+		// Row 0
 		{ "Flatten", true, 0, 0, PlayerAction::Flatten },
 		{ "Earthquake", true, kIconBlock, 0, PlayerAction::Earthquake },
-		// Row 1: Stone Rain | Flamestrike
 		{ "Stone Rain", true, 0, kIconBlock, PlayerAction::StoneRain },
 		{ "Flamestrike", true, kIconBlock, kIconBlock, PlayerAction::Flamestrike },
-		// Row 2: Lightning | Lightning Storm
+		// Row 1
 		{ "Lightning", true, 0, kIconBlock * 2, PlayerAction::Lightning },
 		{ "Lightning Storm", false, kIconBlock, kIconBlock * 2, PlayerAction::Flatten },
-		// Row 3: Bless Land | Swamp
 		{ "Bless Land", true, 0, kIconBlock * 3, PlayerAction::Bless },
 		{ "Swamp", true, kIconBlock, kIconBlock * 3, PlayerAction::Swamp },
-		// Row 4: Volcano | Meteor
+		// Row 2
 		{ "Volcano", false, 0, kIconBlock * 4, PlayerAction::Flatten },
 		{ "Meteor", false, kIconBlock, kIconBlock * 4, PlayerAction::Flatten },
-		// Row 5: Healing Rain | Golem
 		{ "Healing Rain", true, 0, kIconBlock * 5, PlayerAction::HealingLight },
 		{ "Golem", false, kIconBlock, kIconBlock * 5, PlayerAction::Flatten },
-		// Row 6: Armageddon
+		// Row 3
 		{ "Armageddon", false, 0, kIconBlock * 6, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		// Row 4 (empty placeholders to preview 4x5 layout)
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
+		{ "", false, -1, -1, PlayerAction::Flatten },
 	};
-	constexpr int kPowerCount = static_cast<int>(sizeof(kPowers) / sizeof(kPowers[0]));
+	static_assert(sizeof(kPowers) / sizeof(kPowers[0]) == kPowerCols * kPowerRows,
+		"Power grid must be 4x5");
+	constexpr int kPowerCount = kPowerCols * kPowerRows;
+
+	std::string FormatManaCost(float cost)
+	{
+		char buf[32];
+		std::snprintf(buf, sizeof(buf), "Mana %g", static_cast<double>(cost));
+		return buf;
+	}
 
 	struct UnitSlot
 	{
@@ -208,10 +229,7 @@ void MainHud::SetMinimapCamera(float lookAtX, float lookAtZ, float cameraAngleRa
 
 float MainHud::PanelWidth() const
 {
-	if (!g_Engine)
-		return static_cast<float>(kMinimapSize);
-	// About 1/4 of render width, but never narrower than the minimap.
-	return std::max(g_Engine->m_RenderWidth * kPanelFrac, static_cast<float>(kMinimapSize));
+	return kPanelWidth;
 }
 
 float MainHud::PanelX() const
@@ -256,7 +274,13 @@ bool MainHud::ConsumeMinimapCameraJump(float& outWorldX, float& outWorldZ)
 void MainHud::EnsureMinimap()
 {
 	if (m_MinimapReady)
-		return;
+	{
+		if (m_MinimapRT.texture.width == kMinimapSize
+			&& m_MinimapRT.texture.height == kMinimapSize)
+			return;
+		UnloadRenderTexture(m_MinimapRT);
+		m_MinimapReady = false;
+	}
 	m_MinimapRT = LoadRenderTexture(kMinimapSize, kMinimapSize);
 	SetTextureFilter(m_MinimapRT.texture, TEXTURE_FILTER_POINT);
 	m_MinimapReady = true;
@@ -272,47 +296,23 @@ void MainHud::RebuildMinimap()
 
 	const int cellsX = g_Terrain->m_CellWidth;
 	const int cellsZ = g_Terrain->m_CellHeight;
+	// One sample per minimap pixel, stepped by cells/minimapSize (64/96).
+	const float stepX = static_cast<float>(cellsX) / static_cast<float>(kMinimapSize);
+	const float stepZ = static_cast<float>(cellsZ) / static_cast<float>(kMinimapSize);
 
-	auto cellColor = [&](int x, int z) -> Color
-	{
-		x = std::clamp(x, 0, cellsX - 1);
-		z = std::clamp(z, 0, cellsZ - 1);
-		return TerrainMinimapColor(g_Terrain->GetTerrainType(x, z), g_Terrain->GetMiddle(x, z));
-	};
-
-	auto lerpByte = [](unsigned char a, unsigned char b, float t) -> unsigned char
-	{
-		return static_cast<unsigned char>(std::lround(a + (b - a) * t));
-	};
-
-	auto blend = [&](Color a, Color b, float t) -> Color
-	{
-		return Color{
-			lerpByte(a.r, b.r, t),
-			lerpByte(a.g, b.g, t),
-			lerpByte(a.b, b.b, t),
-			255
-		};
-	};
-
-	// Fill every minimap pixel by bilinear-sampling the terrain grid so
-	// non-integer scales (e.g. 96 from 64) don't leave empty gaps.
 	for (int py = 0; py < kMinimapSize; ++py)
 	{
+		const int cellZ = std::clamp(
+			static_cast<int>(static_cast<float>(py) * stepZ),
+			0, cellsZ - 1);
 		for (int px = 0; px < kMinimapSize; ++px)
 		{
-			const float fx = (static_cast<float>(px) + 0.5f) * static_cast<float>(cellsX) / static_cast<float>(kMinimapSize) - 0.5f;
-			const float fz = (static_cast<float>(py) + 0.5f) * static_cast<float>(cellsZ) / static_cast<float>(kMinimapSize) - 0.5f;
-			const int x0 = static_cast<int>(std::floor(fx));
-			const int z0 = static_cast<int>(std::floor(fz));
-			const float tx = fx - static_cast<float>(x0);
-			const float tz = fz - static_cast<float>(z0);
-
-			const Color c00 = cellColor(x0, z0);
-			const Color c10 = cellColor(x0 + 1, z0);
-			const Color c01 = cellColor(x0, z0 + 1);
-			const Color c11 = cellColor(x0 + 1, z0 + 1);
-			const Color c = blend(blend(c00, c10, tx), blend(c01, c11, tx), tz);
+			const int cellX = std::clamp(
+				static_cast<int>(static_cast<float>(px) * stepX),
+				0, cellsX - 1);
+			const Color c = TerrainMinimapColor(
+				g_Terrain->GetTerrainType(cellX, cellZ),
+				g_Terrain->GetMiddle(cellX, cellZ));
 			DrawPixel(px, py, c);
 		}
 	}
@@ -508,22 +508,6 @@ void MainHud::DrawManaBar(float x, float y, float width)
 	}
 }
 
-void MainHud::DrawStatus(float x, float y, float width)
-{
-	(void)width;
-	if (!g_smallFont)
-		return;
-
-	const Player& p = g_Sim.GetPlayer(g_Sim.LocalPlayerSlot());
-	DrawOutlinedText(
-		g_smallFont,
-		TextFormat("Population %d", p.m_Population),
-		{ x, y },
-		static_cast<float>(g_smallFont->baseSize),
-		1,
-		WHITE);
-}
-
 void MainHud::DrawTabs(float x, float y, float width)
 {
 	const float tabW = width / static_cast<float>(Tab::Count);
@@ -573,7 +557,8 @@ void MainHud::DrawPowersTab(float x, float y, float width, float height)
 			bg = Color{ 50, 55, 45, 255 };
 		DrawRectangleRec(r, bg);
 
-		if (m_IconsTex && m_IconsTex->id != 0)
+		if (m_IconsTex && m_IconsTex->id != 0
+			&& kPowers[i].tileX >= 0 && kPowers[i].tileY >= 0)
 		{
 			// Active = top-left of 2x2; inactive/gray = bottom-right.
 			int srcX = kPowers[i].tileX;
@@ -747,37 +732,46 @@ void MainHud::Draw()
 	float y = kPad;
 	const float mapX = px + (pw - kMinimapSize) * 0.5f;
 	DrawMinimap(mapX, y);
-	y += kMinimapSize + kPad;
+	y += kMinimapSize + kManaGapAfterMinimap;
 
 	DrawManaBar(px + kPad, y, pw - kPad * 2);
-	y += kManaBarH + kPad;
-
-	DrawStatus(px + kPad, y, pw - kPad * 2);
-	y += kStatusH + kPad;
+	y += kManaBarH + kManaGapBeforeTabs;
 
 	DrawTabs(px, y, pw);
 
 	const Rectangle content = HudContentRect(px, pw, ph);
 	DrawTabContent(content.x, content.y, content.width, content.height);
 
-	// Power name tooltip: bottom of screen, flush with left edge of the HUD panel.
+	// Power tooltip: left of the HUD, above the bottom edge. Name, then mana cost.
 	if (m_ActiveTab == Tab::Powers
 		&& m_HoveredPower >= 0
 		&& m_HoveredPower < kPowerCount
+		&& kPowers[m_HoveredPower].name[0] != '\0'
 		&& g_smallFont
 		&& (static_cast<float>(GetTime()) - m_PowerHoverStart) >= kPowerTooltipDelay)
 	{
 		const float fs = static_cast<float>(g_smallFont->baseSize);
+		const PowerSlot& power = kPowers[m_HoveredPower];
+		std::vector<ColoredString> lines;
+		lines.emplace_back(power.name, WHITE);
+		if (power.available)
+		{
+			lines.emplace_back(
+				FormatManaCost(ManaCostFor(power.action)),
+				Color{ 190, 210, 235, 255 });
+		}
+		const int tipY = std::max(
+			24,
+			static_cast<int>(ph - kPowerTooltipBottomGap));
 		// Lower-right anchor at panel left edge => tooltip sits over the world,
 		// with its right edge flush against the HUD.
 		DrawToolTip(
 			g_smallFont.get(),
 			fs,
-			kPowers[m_HoveredPower].name,
+			lines,
 			static_cast<int>(px),
-			static_cast<int>(ph),
+			tipY,
 			1.0f,
-			2, // lower-right anchor
-			WHITE);
+			2);
 	}
 }

@@ -64,6 +64,8 @@ public:
 	int InputDelay() const { return m_InputDelay; }
 	uint32_t MapSeed() const { return m_MapSeed; }
 	int SimPlayers() const { return m_SimPlayers; }
+	// Same fingerprint ComputeChecksum uses. The harness calls this through PlanitiaMatchChecksum.
+	uint32_t Checksum(const GameSim& sim) const;
 
 	int OccupiedRemoteSlots() const;
 	std::string PeerNameForSlot(int slot) const;

@@ -36,15 +36,15 @@ namespace
 			matProj = MatrixPerspective(
 				camera.fovy * DEG2RAD,
 				static_cast<double>(width) / static_cast<double>(height),
-				RL_CULL_DISTANCE_NEAR,
-				RL_CULL_DISTANCE_FAR);
+				kViewNear,
+				kViewFar);
 		}
 		else if (camera.projection == CAMERA_ORTHOGRAPHIC)
 		{
 			const double aspect = static_cast<double>(width) / static_cast<double>(height);
 			const double top = camera.fovy / 2.0;
 			const double right = top * aspect;
-			matProj = MatrixOrtho(-right, right, -top, top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+			matProj = MatrixOrtho(-right, right, -top, top, kViewNear, kViewFar);
 		}
 
 		const Vector3 nearPoint = Vector3Unproject(

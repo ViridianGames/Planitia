@@ -56,6 +56,9 @@ public:
 
 	// configfile: optional path relative to Redist (e.g. "Data/Maps/MainMenuTerrain.txt")
 	void Init(const std::string& configfile = "");
+	// Heights and terrain types only. No textures and no mesh. The game window never uses this.
+	void InitSimulation(const std::string& configfile = "");
+	bool IsHeadless() const { return m_Headless; }
 	void Shutdown();
 	void Update();
 	void Draw();
@@ -108,9 +111,11 @@ public:
 	TerrainDrawMode m_DrawMode = TerrainDrawMode::Textured;
 
 private:
+	bool m_Headless = false;
 	static float Lerp(float a, float b, float t) { return a + (b - a) * t; }
 
 	void LoadConfig(const std::string& configfile);
+	void AllocateArrays();
 	void LoadTextures();
 	void BuildAtlas();
 	void UnloadDrawMeshes();
@@ -124,6 +129,14 @@ private:
 	void FillCellVertices(int cellX, int cellZ, struct Vertex* out12) const;
 	void WriteCellToMesh(int cellX, int cellZ);
 	void RecalculateMaxHeight();
+	void LoadWaterShader();
+	void BuildWaterPlane();
+
+	// One sheet over the whole map. Land above the water line hides it.
+	Model m_WaterModel{};
+	bool m_WaterModelLoaded = false;
+	Shader m_WaterShader{};
+	int m_WaterTimeLoc = -1;
 
 	std::vector<float> m_Values;
 	std::vector<TerrainCell> m_Cells;

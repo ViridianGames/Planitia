@@ -6,6 +6,10 @@
 #
 # Windows uses the vendored raylib.lib with the VS 2022 generator. windows-latest
 # is VS 2026 and does not provide "Visual Studio 17 2022".
+#
+# A green master build commits the new binaries into Redist/ and pushes them,
+# so a later git pull updates the folder. Artifact uploads are only on the
+# Actions run. [skip ci] plus paths-ignore stop that push from building again.
 
 name: Build
 
@@ -13,6 +17,11 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+    paths-ignore:
+      - "Redist/Planitia"
+      - "Redist/Planitia.exe"
+      - "Redist/planitia-harness"
+      - "Redist/planitia-harness.exe"
   pull_request:
 
 concurrency:
@@ -20,7 +29,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   linux:
@@ -30,6 +39,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install build dependencies
         run: |
@@ -97,6 +109,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Commit Linux binaries to master
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -- Redist/Planitia Redist/planitia-harness
+          if git diff --cached --quiet -- Redist/Planitia Redist/planitia-harness; then
+            echo "Linux Redist binaries unchanged; nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "Update Redist/Planitia and planitia-harness [skip ci]"
+          git pull --rebase --autostash origin master
+          git push origin HEAD:master
+          echo "Pushed Linux Redist binaries to master."
+
   windows:
     name: Windows Release (x64)
     runs-on: windows-2022
@@ -104,6 +134,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Show toolchain
         shell: pwsh
@@ -174,3 +207,23 @@ jobs:
             Redist/planitia-harness.exe
           if-no-files-found: error
           retention-days: 14
+
+      - name: Commit Windows binaries to master
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -- "Redist/Planitia.exe" "Redist/planitia-harness.exe"
+          $porcelain = git status --porcelain -- "Redist/Planitia.exe" "Redist/planitia-harness.exe"
+          if (-not $porcelain) {
+            Write-Host "Windows Redist binaries unchanged; nothing to commit."
+            exit 0
+          }
+
+          git commit -m "Update Redist/Planitia.exe and planitia-harness.exe [skip ci]"
+          git pull --rebase --autostash origin master
+          git push origin HEAD:master
+          Write-Host "Pushed Windows Redist binaries to master."

@@ -319,7 +319,11 @@ namespace
 		using clock = std::chrono::system_clock;
 		const std::time_t now = clock::to_time_t(clock::now());
 		std::tm tm{};
+#if defined(_WIN32)
+		localtime_s(&tm, &now);
+#else
 		localtime_r(&now, &tm);
+#endif
 		std::ostringstream oss;
 		oss << "Data/HarnessRuns/run_"
 			<< std::put_time(&tm, "%Y%m%d_%H%M%S")
